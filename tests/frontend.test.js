@@ -34,11 +34,42 @@ test("mock fixture cannot be applied to arbitrary uploads", () => {
   result.findings[0].text = "mutated";
   assert.notEqual(mockScan(DEMO_ID, config).findings[0].text, "mutated");
 });
-test("production seam explicitly reports unavailable and never returns mock findings", async () => {
-  const result = await scanImage({ width: 960, height: 640 }, DEFAULT_CONFIG);
-  assert.equal(result.status, "unavailable");
-  assert.deepEqual(result.findings, []);
-  assert.equal(result.source, "none");
+test("real adapter sends multipart configuration to same-origin backend and never substitutes mock", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "./api/scan");
+    assert.equal(options.method, "POST");
+    assert.equal(options.cache, "no-store");
+    assert.ok(options.body instanceof FormData);
+    assert.equal(JSON.parse(options.body.get("config")).language, "vie+eng");
+    assert.equal(options.body.get("image").type, "image/png");
+    return Response.json({
+      mode: "real_ocr",
+      width: 960,
+      height: 640,
+      findings: [],
+      language: "eng",
+      warnings: [],
+    });
+  };
+  try {
+    const image = {
+      width: 960,
+      height: 640,
+      toBlob: (callback) =>
+        callback(new Blob(["pixels"], { type: "image/png" })),
+    };
+    const result = await scanImage(image, DEFAULT_CONFIG);
+    assert.equal(result.status, "complete");
+    assert.deepEqual(result.findings, []);
+    assert.equal(result.source, "ocr");
+    globalThis.fetch = async () => {
+      throw new TypeError("offline");
+    };
+    await assert.rejects(scanImage(image, DEFAULT_CONFIG), /Python backend/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 test("cancelled scan does not publish results", async () => {
   const controller = new AbortController();

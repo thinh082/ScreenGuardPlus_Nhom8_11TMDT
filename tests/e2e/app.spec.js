@@ -87,7 +87,7 @@ test("fixed demo: scan, choose, redact, before/after, PNG pixels, clear", async 
   await expect(page.locator("#finding-count")).toHaveText("0");
 });
 
-test("user upload never gets fake detections; manual redaction and no image upload request", async ({
+test("user upload gets real OCR, manual redaction and same-origin request", async ({
   page,
 }) => {
   const requests = [];
@@ -99,7 +99,7 @@ test("user upload never gets fake detections; manual redaction and no image uplo
     .locator("#image-input")
     .setInputFiles("frontend/icons/icon-192.png");
   await expect(page.locator("#result-status")).toHaveText(
-    "Chưa nhận diện · OCR chưa tích hợp",
+    "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
   await page.locator("details.coordinates summary").click();
@@ -117,7 +117,8 @@ test("user upload never gets fake detections; manual redaction and no image uplo
   await page.locator("[data-remove]").click();
   await expect(page.locator("#finding-count")).toHaveText("0");
   await expect(page.locator("#download-image")).toBeDisabled();
-  expect(requests).toEqual([]);
+  expect(requests).toHaveLength(1);
+  expect(new URL(requests[0]).pathname).toBe("/api/scan");
 });
 
 test("drag and pointer marking use image coordinates", async ({ page }) => {
@@ -136,7 +137,9 @@ test("drag and pointer marking use image coordinates", async ({ page }) => {
   await page
     .locator("#dropzone")
     .dispatchEvent("drop", { dataTransfer: transfer });
-  await expect(page.locator("#result-status")).toContainText("Chưa nhận diện");
+  await expect(page.locator("#result-status")).toContainText(
+    "Không phát hiện thông tin nhạy cảm",
+  );
   await page.locator("#toggle-draw").click();
   const box = await page.locator("#preview-canvas").boundingBox();
   await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
@@ -204,23 +207,19 @@ test("invalid file and corrupt image show errors without fake results", async ({
   page,
 }) => {
   await page.goto("/#/scanner");
-  await page
-    .locator("#image-input")
-    .setInputFiles({
-      name: "fake.png",
-      mimeType: "image/png",
-      buffer: Buffer.from("not an image"),
-    });
+  await page.locator("#image-input").setInputFiles({
+    name: "fake.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("not an image"),
+  });
   await expect(page.locator("#scanner-error")).toContainText(
     "Không đọc được ảnh",
   );
-  await page
-    .locator("#image-input")
-    .setInputFiles({
-      name: "vector.svg",
-      mimeType: "image/svg+xml",
-      buffer: Buffer.from("<svg/>"),
-    });
+  await page.locator("#image-input").setInputFiles({
+    name: "vector.svg",
+    mimeType: "image/svg+xml",
+    buffer: Buffer.from("<svg/>"),
+  });
   await expect(page.locator("#scanner-error")).toContainText(
     "Chỉ hỗ trợ ảnh PNG",
   );
@@ -247,7 +246,7 @@ test("camera capture is explicit and stream stops when dialog closes", async ({
     ),
   ).toBe(true);
   await expect(page.locator("#result-status")).toHaveText(
-    "Chưa nhận diện · OCR chưa tích hợp",
+    "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
 });

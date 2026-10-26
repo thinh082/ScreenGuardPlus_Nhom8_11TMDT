@@ -5,8 +5,10 @@ import {
   updateDetectionConfig,
   resetDetectionConfig,
 } from "../services/config-service.js";
+import { getBackendHealth } from "../services/scanner-service.js";
 export function settingsPage(main) {
   let config = getDetectionConfig();
+  let disposed = false;
   function render() {
     main.innerHTML =
       heading(
@@ -20,11 +22,18 @@ export function settingsPage(main) {
       <label class="mode-card ${config.mode === "auto" ? "selected" : ""}"><input type="radio" name="mode" value="auto" ${config.mode === "auto" ? "checked" : ""}>${icon("image")}<strong>Quét khi nhập ảnh</strong><span>Tự bắt đầu kiểm tra sau khi bạn chọn một ảnh.</span><small>AUTO SCAN ON IMPORT</small></label>
       <div class="mode-card future" aria-disabled="true">${icon("clock")}<strong>Giám sát nền <span class="badge">Sắp tới</span></strong><span>Chưa hỗ trợ. Ứng dụng không theo dõi thư viện ảnh hoặc tự chụp màn hình.</span><small>FUTURE FEATURE</small></div>
     </div></section>
-    <div class="settings-columns"><section class="panel settings-panel"><div class="section-title"><h2>Cấu hình nhận diện</h2>${icon("sliders")}</div><label class="setting-field"><span><strong>Độ nhạy</strong><small>Thông số dự kiến cho bộ nhận diện thực tế.</small></span><select id="sensitivity"><option value="low">Thấp</option><option value="balanced">Cân bằng</option><option value="high">Cao</option></select></label><label class="setting-field"><span><strong>Ngôn ngữ OCR</strong><small>Thông số dự kiến cho Tesseract OCR.</small></span><select id="language"><option value="vie+eng">Tiếng Việt + English</option><option value="vie">Tiếng Việt</option><option value="eng">English</option></select></label><p class="small muted">Các tùy chọn được lưu để tích hợp sau; không thay đổi dữ liệu demo cố định.</p></section>
-    <section class="panel settings-panel"><div class="section-title"><h2>Quyền riêng tư</h2>${icon("lock")}</div><div class="privacy-row"><span>${icon("check")} Ảnh chỉ nằm trong bộ nhớ phiên quét</span><span class="badge mint">Luôn bật</span></div><div class="privacy-row"><span>${icon("check")} Không gửi ảnh đến máy chủ</span><span class="badge mint">Luôn bật</span></div><p class="small muted">Cấu hình được lưu trên trình duyệt này. Nhấn “Xóa ảnh” trong trình quét hoặc tải lại trang để giải phóng ảnh và kết quả.</p><button id="reset-settings" class="button secondary">${icon("trash")} Khôi phục cấu hình mặc định</button></section></div>
-    <section class="panel settings-panel"><div class="section-title"><h2>Trạng thái hệ thống</h2><span class="badge">PHASE 1</span></div><div class="system-grid"><div><span>Giao diện & Canvas</span><strong class="mint-text">${icon("check")} Sẵn sàng</strong></div><div><span>OCR / PII thực tế</span><strong class="amber-text">${icon("clock")} Chưa tích hợp</strong></div><div><span>Offline app shell</span><strong id="sw-status">Đang kiểm tra…</strong></div><div><span>Kết nối mạng</span><strong id="settings-network">${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}</strong></div></div></section>`;
+    <div class="settings-columns"><section class="panel settings-panel"><div class="section-title"><h2>Cấu hình nhận diện</h2>${icon("sliders")}</div><label class="setting-field"><span><strong>Độ nhạy</strong><small>Ngưỡng OCR tối thiểu: Thấp 60%, Cân bằng 20%, Cao 0%.</small></span><select id="sensitivity"><option value="low">Thấp</option><option value="balanced">Cân bằng</option><option value="high">Cao</option></select></label><label class="setting-field"><span><strong>Ngôn ngữ OCR</strong><small>Thiếu vie sẽ dự phòng sang eng khi có sẵn.</small></span><select id="language"><option value="vie+eng">Tiếng Việt + English</option><option value="vie">Tiếng Việt</option><option value="eng">English</option></select></label><p class="small muted">Độ nhạy và ngôn ngữ áp dụng cho OCR thật. Điểm luật là heuristic, không phải xác suất.</p></section>
+    <section class="panel settings-panel"><div class="section-title"><h2>Quyền riêng tư</h2>${icon("lock")}</div><div class="privacy-row"><span>${icon("check")} Không lưu ảnh hoặc OCR text lâu dài</span><span class="badge mint">Luôn bật</span></div><div class="privacy-row"><span>${icon("check")} Ảnh được gửi tới Python backend</span><span class="badge mint">Luôn bật</span></div><p class="small muted">Cấu hình được lưu trên trình duyệt này. Nhấn “Xóa ảnh” trong trình quét hoặc tải lại trang để giải phóng ảnh và kết quả.</p><button id="reset-settings" class="button secondary">${icon("trash")} Khôi phục cấu hình mặc định</button></section></div>
+    <section class="panel settings-panel"><div class="section-title"><h2>Trạng thái hệ thống</h2><span class="badge">PHASE 2</span></div><div class="system-grid"><div><span>Giao diện & Canvas</span><strong class="mint-text">${icon("check")} Sẵn sàng</strong></div><div><span>OCR / PII thực tế</span><strong id="settings-ocr">Đang kiểm tra…</strong></div><div><span>Offline app shell</span><strong id="sw-status">Đang kiểm tra…</strong></div><div><span>Kết nối mạng</span><strong id="settings-network">${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}</strong></div></div></section>`;
     main.querySelector("#sensitivity").value = config.sensitivity;
     main.querySelector("#language").value = config.language;
+    getBackendHealth().then((health) => {
+      const el = main.querySelector("#settings-ocr");
+      if (!disposed && el)
+        el.textContent = health.ocr_available
+          ? `Tesseract · ${(health.languages || []).join(", ")}`
+          : "OCR chưa khả dụng · kiểm tra Tesseract/backend";
+    });
     function save() {
       const result = updateDetectionConfig(config);
       toast(
@@ -75,6 +84,7 @@ export function settingsPage(main) {
   window.addEventListener("online", network);
   window.addEventListener("offline", network);
   return () => {
+    disposed = true;
     window.removeEventListener("online", network);
     window.removeEventListener("offline", network);
   };

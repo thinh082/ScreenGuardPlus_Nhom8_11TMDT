@@ -18,6 +18,18 @@ class OCRBlock(ContractModel):
     text: str
     box: BoundingBox
     confidence: float = Field(ge=0, le=1)
+    line_id: tuple[int, int, int, int] = (1, 1, 1, 1)
+
+
+class TokenSpan(ContractModel):
+    start: int
+    end: int
+    token_index: int
+
+
+class OCRLine(ContractModel):
+    text: str
+    spans: list[TokenSpan]
 
 
 class OCRResult(ContractModel):
@@ -25,6 +37,9 @@ class OCRResult(ContractModel):
     height: int = Field(gt=0)
     blocks: list[OCRBlock]
     language: str
+    text: str = ""
+    lines: list[OCRLine] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class Finding(ContractModel):
@@ -34,6 +49,10 @@ class Finding(ContractModel):
     text: str
     risk: Literal["low", "medium", "high"]
     box: BoundingBox
+    score: float = Field(default=0.8, ge=0, le=1)
+    ocr_confidence: float = Field(default=0, ge=0, le=1)
+    preview: str = ""
+    source: str = "ocr_regex"
 
 
 class CustomRule(ContractModel):
@@ -62,10 +81,23 @@ class DetectionConfig(ContractModel):
     language: Literal["vie", "eng", "vie+eng"] = "vie+eng"
 
 
+class APIFinding(ContractModel):
+    id: str
+    type: Literal["EMAIL", "PHONE", "CITIZEN_ID", "STUDENT_ID", "BANK_ACCOUNT", "CUSTOM"]
+    label: str
+    bbox: tuple[int, int, int, int]
+    risk: Literal["LOW", "MEDIUM", "HIGH"]
+    score: float = Field(ge=0, le=1)
+    ocr_confidence: float = Field(ge=0, le=1)
+    preview: str
+    source: Literal["ocr_regex", "ocr_keyword"]
+
+
 class ScanResult(ContractModel):
-    status: Literal["complete"]
-    source: Literal["ocr"]
+    mode: Literal["real_ocr"] = "real_ocr"
     width: int = Field(gt=0)
     height: int = Field(gt=0)
-    findings: list[Finding]
+    findings: list[APIFinding]
+    language: str
+    warnings: list[str] = Field(default_factory=list)
     message: str

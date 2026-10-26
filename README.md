@@ -1,146 +1,158 @@
-# ScreenGuard+
+# ScreenGuard+ · Phase 2
 
-**Bảo vệ trước khi chia sẻ.** PWA tiếng Việt giúp xem trước ảnh, chọn vùng riêng tư,
-che bằng màu đục và tải xuống PNG. Đồ án nhóm 08 · Phase 1 · nhánh `tuvy1`.
+PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
+Giữ nguyên giao diện dark navy, responsive và toàn bộ thao tác thủ công của Phase 1.
+Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
 ## Chạy trên Windows
 
-Cần Python 3.12+ và trình duyệt hiện đại. Không cần Node để chạy ứng dụng.
+Cần Python 3.12+, Tesseract 5 và trình duyệt hiện đại. OCR chạy bằng CPU.
 
 ```powershell
 cd C:\ScreenGuardPlus_Nhom8_11TMDT
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+winget install --id UB-Mannheim.TesseractOCR --exact --accept-package-agreements --accept-source-agreements
+.\.venv\Scripts\python.exe scripts/install_languages.py
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Mở **http://127.0.0.1:8000**. Swagger: **http://127.0.0.1:8000/docs**.
-Nếu đã cài dependencies vào Python hiện tại, có thể chạy `npm start` hoặc
-`python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`.
+Mở **http://127.0.0.1:8000**. API docs: **http://127.0.0.1:8000/docs**.
+Nếu server Phase 1 vẫn đang chạy, dừng bằng Ctrl+C ở terminal đó và chạy lại lệnh
+uvicorn để nạp backend Phase 2. Nếu đã cài dependencies vào Python hiện tại, có thể
+chạy `npm start` hoặc `python -m uvicorn backend.main:app --port 8000 --reload`.
+Không cần Node, SQL, tài khoản, cloud API hoặc GPU để chạy ứng dụng.
 
-Frontend không có bước build, framework, CDN, font hay API cloud. Có thể chạy riêng:
+### Engine và gói ngôn ngữ
+
+- Tự tìm `tesseract` trong PATH, `C:\Program Files\Tesseract-OCR` và thư mục Programs
+  của người dùng. Nếu cài ở nơi khác, đặt biến môi trường trước khi chạy server:
 
 ```powershell
-python -m http.server 8080 --directory frontend
+$env:TESSERACT_CMD = 'D:\Tools\Tesseract-OCR\tesseract.exe'
 ```
 
-Khi đó UI chạy tại http://localhost:8080, API không được phục vụ.
-Không mở `index.html` trực tiếp bằng `file://` vì ES Modules/PWA cần HTTP.
+- `scripts/install_languages.py` tải `eng` và `vie` từ kho chính thức
+  [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) vào
+  `%LOCALAPPDATA%\ScreenGuardPlus\tessdata`, không cần quyền ghi vào Program Files.
+- Có thể chỉ định bộ dữ liệu riêng bằng `$env:TESSDATA_PREFIX = 'D:\OCR\tessdata'`.
+  Thư mục này phải chứa các tệp `.traineddata`. Trên Linux/macOS, thư mục dữ liệu
+  người dùng mặc định là `~/.local/share/ScreenGuardPlus/tessdata`.
+- Chọn `vie+eng`, `vie` hoặc `eng` trong Cài đặt. Nếu thiếu `vie` nhưng có `eng`,
+  backend dùng `eng` và trả cảnh báo trên màn hình quét. Nếu không có ngôn ngữ
+  dùng được hoặc không tìm thấy engine, báo lỗi rõ ràng và vẫn cho đánh dấu thủ công.
+- Xem trạng thái thực tế tại `/api/health`, Dashboard và Cài đặt. Cài `pytesseract`
+  bằng pip **không tự cài** Tesseract executable.
 
-## Demo trước giảng viên
+## Kiểm tra nhanh bằng ảnh thật
 
-1. Từ **Tổng quan**, chọn **Thử với ảnh mẫu**.
-2. Chờ tiến trình mô phỏng. Mặc định có 5 vùng thuộc 5 loại dữ liệu.
-3. Bỏ chọn tất cả, chọn một vài vùng, nhấn **Che vùng đã chọn**.
-4. Chuyển **Ảnh gốc / Sau khi che** rồi nhấn **Tải ảnh PNG**.
-5. Trong **Dữ liệu nhạy cảm**, tắt Email và quay lại ảnh mẫu để thấy kết quả được lọc.
-6. Thử ảnh riêng: upload/kéo thả hoặc Camera. Ảnh này **không được OCR**; ứng dụng
-   ghi rõ chưa nhận diện và không gán các phát hiện mẫu cho ảnh.
-7. Bật **Đánh dấu vùng**, kéo trên ảnh (hỗ trợ cảm ứng), hoặc nhập tọa độ pixel;
-   chọn vùng rồi che/tải ảnh như trên.
-8. Trong **Cài đặt & bảo vệ**, chuyển sang quét thủ công: sau khi nhập ảnh cần
-   nhấn **Kiểm tra ảnh**. Mặc định là tự quét sau khi người dùng nhập ảnh.
+Các ảnh trong `sample_data/screenshots/` chỉ chứa dữ liệu hư cấu.
 
-## Có gì trong Phase 1?
+1. Mở **Kiểm tra hình ảnh**, tải `sample_data/screenshots/all.png`.
+2. Ứng dụng gửi ảnh PNG đã chuẩn hóa tới Python backend cùng cấu hình hiện tại.
+   Trong chế độ mặc định, OCR chạy ngay sau khi nhập ảnh.
+3. Tesseract đọc chữ và detector tìm Email, SĐT, MSSV, CCCD, số tài khoản. Bounding
+   boxes tự xuất hiện; sidebar dùng preview đã che bớt ký tự.
+4. Bỏ chọn/chọn vùng tùy ý, có thể thêm vùng thủ công bằng kéo hoặc tọa độ pixel.
+   Nhấn **Che vùng đã chọn**, so sánh **Ảnh gốc / Sau khi che**, rồi **Tải ảnh PNG**.
+5. Tắt Email trong **Dữ liệu nhạy cảm**, nhập lại ảnh: không trả EMAIL.
+6. Thêm Regex `NV-[0-9]{6}` và Keyword `CONFIDENTIAL`, nhập ảnh `custom.png` để thử.
+7. Chọn **Quét thủ công** trong Cài đặt nếu muốn tự bấm **Kiểm tra ảnh** sau khi nhập.
 
-| Hạng mục                                                   | Trạng thái                                          |
-| ---------------------------------------------------------- | --------------------------------------------------- |
-| Dashboard, điều hướng, responsive mobile/desktop           | Hoạt động                                           |
-| Chọn/kéo thả PNG, JPEG, WebP; kiểm tra 10 MB / 20 MP       | Hoạt động                                           |
-| Camera trực tiếp + camera thiết bị khi hỗ trợ              | Hoạt động; cần người dùng cấp quyền                 |
-| Mô phỏng tiến trình và bounding boxes                      | Chỉ trên ảnh mẫu tích hợp, dữ liệu cố định          |
-| Tự chọn vùng, checkbox, chọn/bỏ chọn tất cả                | Hoạt động                                           |
-| Che màu đục, so sánh trước/sau, xuất PNG                   | Hoạt động                                           |
-| Bật/tắt 6 loại, thêm/xóa/bật/tắt Keyword/Regex, mức rủi ro | Lưu cấu hình trên thiết bị                          |
-| Keyword/Regex, độ nhạy, ngôn ngữ OCR                       | Thông số sẵn sàng tích hợp; chưa thực thi nhận diện |
-| Manifest, icon 192/512, standalone, cài đặt, offline shell | Hoạt động trên trình duyệt hỗ trợ                   |
-| FastAPI, validation, models, pipeline, redactor Python     | Bộ khung và contracts; redactor hoạt động           |
-| Tesseract OCR, Regex/context PII detector                  | Chưa tích hợp; API trả HTTP 501                     |
-| Giám sát nền                                               | Future Feature; vô hiệu hóa                         |
+Nút **Ảnh mẫu demo** của Phase 1 được giữ nguyên và ghi rõ Mock Mode. Nó không gọi
+OCR, không chạy custom rules và không được áp kết quả cho ảnh upload/camera.
+Ảnh nhập bình thường luôn đi qua API thật; không có fallback sang findings mẫu.
 
-Không có thống kê quét giả, lịch sử ảnh, SQL, đăng nhập hoặc tự chụp màn hình.
-Số loại đang bật được tính từ cấu hình thực tế. Chuyển khỏi trang quét cũng giải phóng
-ảnh/kết quả trong bộ nhớ; ứng dụng không giữ lịch sử phiên quét.
+## Nhận diện và giới hạn
 
-## PWA, điện thoại và offline
+| Loại                | Luật thực tế                                                                |
+| ------------------- | --------------------------------------------------------------------------- |
+| Email               | Regex, hỗ trợ token bị tách quanh dấu chấm và `@`; risk HIGH                |
+| SĐT Việt Nam        | Đầu số di động 03/05/07/08/09, dạng 0 hoặc +84/84; dấu cách/chấm/gạch nối   |
+| MSSV                | Dạng SV + chữ số hoặc mã chữ/số có nhãn MSSV, Mã sinh viên, Student ID      |
+| CCCD                | Đúng 12 số và có ngữ cảnh CCCD, Căn cước, Citizen ID                        |
+| Tài khoản ngân hàng | 8–19 số và ngữ cảnh STK, Số tài khoản, Bank account, Account number         |
+| Custom              | Keyword không phân biệt hoa/thường hoặc Regex giới hạn, tùy risk và enabled |
 
-- Nút **Cài đặt ứng dụng** gọi lời mời cài đặt khi trình duyệt phát sự kiện hỗ trợ;
-  nếu chưa có, nút hiển thị hướng dẫn theo trình duyệt. Việc trình duyệt có hiện
-  lời mời hay không phụ thuộc nền tảng và tiêu chí cài đặt của trình duyệt đó.
-- Mở thành công một lần để service worker tải đủ app shell. Sau đó có thể tải lại,
-  mở các màn hình, chạy demo và che ảnh cục bộ khi offline.
-- Service worker chỉ phục vụ danh sách đường dẫn app shell cố định. Không cache
-  API, URL có query, blob, ảnh tải lên, OCR text hoặc findings.
-- Camera trực tiếp và service worker cần **HTTPS hoặc localhost**. Dùng địa chỉ IP
-  LAN qua HTTP trên điện thoại có thể mở UI nhưng không có các tính năng này.
-- Để demo UI trên cùng Wi-Fi: đổi `--host 127.0.0.1` thành `--host 0.0.0.0`, truy cập
-  `http://<IP-may-tinh>:8000`; chỉ mở cổng trong mạng tin cậy. Muốn thử đầy đủ PWA/camera
-  trên điện thoại, phục vụ qua HTTPS có chứng chỉ được thiết bị tin cậy.
-- Khi thay đổi app shell, tăng `CACHE` trong `frontend/service-worker.js` để cập nhật
-  bộ cache. Khi phát triển, có thể Unregister/Clear site data trong DevTools.
+Số không có ngữ cảnh không tự bị gán thành CCCD/MSSV/tài khoản. Ngữ cảnh gần nhất
+được ưu tiên, các phát hiện chồng cùng nội dung được loại trùng. Ghép token cùng
+dòng giữ mapping character span → token → bounding box; vùng che mở rộng 2 pixel
+và luôn nằm trong kích thước ảnh gốc. Nếu nhãn và giá trị dính trong cùng một token,
+vùng có thể chứa cả token để tránh cắt sót ký tự.
 
-## Dữ liệu và quyền riêng tư
+**OCR confidence** là confidence do Tesseract trả về. **Điểm luật** là heuristic
+của detector, không phải xác suất nhận diện chính xác. Độ nhạy Thấp/Cân bằng/Cao
+lần lượt yêu cầu OCR confidence trung bình tối thiểu 60%/20%/0%. OCR ảnh mờ, chữ
+nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót.
 
-- Phase 1 không gửi pixels, ảnh hoặc kết quả lên API. Ảnh được decode thành Canvas
-  trong RAM. Object URL được thu hồi sau khi đọc/xuất.
-- Chỉ cấu hình detection/settings được lưu vào `localStorage` với khóa
-  `screenguard.config.v1`. Nếu trình duyệt chặn storage, cấu hình chỉ áp dụng trong phiên.
-- **Xóa ảnh**, chuyển trang hoặc tải lại sẽ bỏ ảnh và findings. Camera dừng khi đóng
-  hộp thoại, chụp xong hoặc rời trang. Không xin quyền camera lúc mở ứng dụng.
-- PNG xuất là pixels đã vẽ lại, không sao chép EXIF từ tệp nguồn. Vùng che là màu đục,
-  không phải lớp HTML có thể bóc ra trong tệp xuất.
-- Quy tắc tùy chỉnh là dữ liệu người dùng; nội dung được escape trước khi đưa vào HTML.
-  Regex hiện chỉ được kiểm tra cú pháp, không thực thi trên ảnh hoặc OCR.
-- **Kết quả tự động có thể bỏ sót PII. Luôn kiểm tra toàn bộ ảnh trước khi chia sẻ.**
+**Luôn kiểm tra toàn bộ ảnh trước khi chia sẻ. Không có cam kết an toàn 100%.**
+Ảnh không có findings sẽ hiển thị thông báo yêu cầu kiểm tra lại, không ghi “an toàn”.
 
-## Cấu trúc và phân công tích hợp
+## Quyền riêng tư và PWA
 
-```text
-frontend/
-  index.html, css/styles.css
-  js/app.js, router.js
-  js/components/       # icons, escapeHTML, toast, page helpers
-  js/pages/            # dashboard, scanner, configuration, settings
-  js/services/         # config, scanner contract, isolated mock fixture
-  icons/, manifest.webmanifest, service-worker.js
-backend/
-  main.py              # FastAPI + frontend, privacy headers
-  api/routes.py        # health, defaults, scan boundary
-  services/scanner.py  # API ↔ core adapter
-core/                  # validator, models, OCR, detector, redactor, pipeline
-sample_data/README.md  # fictional fixture provenance
-docs/INTEGRATION.md    # interfaces, schemas, integration checklist
-tests/                 # JS contracts, Python tests, browser E2E
-```
-
-Thành viên OCR: triển khai `core/ocr.py` theo `OCRResult`, giữ xử lý local.
-Thành viên PII: triển khai `core/detector.py` theo `Finding`, giữ tọa độ nguồn,
-lọc theo `DetectionConfig`. Xem [hợp đồng tích hợp](docs/INTEGRATION.md).
+- **Ảnh được gửi tới Python backend cùng origin để OCR.** Nếu mở từ điện thoại
+  trong LAN, backend có thể đang ở máy tính khác. Ứng dụng luôn mô tả là “Python
+  backend”, không mặc định nhận đó là xử lý trên chính thiết bị đang mở web.
+- Không gửi ảnh tới bên thứ ba; không SQL, không lưu ảnh/OCR text lâu dài, không log
+  toàn bộ OCR text/PII. API chỉ trả masked previews, không trả toàn bộ văn bản OCR.
+- Multipart được giới hạn và giữ trong RAM. `pytesseract` cần tệp tạm của tiến trình
+  Tesseract; wrapper dọn chúng sau tác vụ, kể cả timeout thông thường. Khi vận hành
+  với dữ liệu nhạy cảm, dùng thư mục TEMP riêng có quyền truy cập phù hợp; tiến trình
+  bị tắt cưỡng bức có thể để lại tệp tạm của hệ điều hành.
+- Ảnh ≤ 10 MiB, ≤ 20 MP; kiểm tra MIME, signature, verify/decode thực tế, chuẩn hóa
+  EXIF, matte trắng cho ảnh trong suốt. PNG xuất được vẽ mới, không sao chép EXIF.
+- Giới hạn 2 tác vụ OCR đồng thời, 25 giây/engine call, tối đa 20.000 token,
+  100.000 ký tự OCR và 500 findings. UI hủy yêu cầu khi thay ảnh/rời trang; tác vụ
+  Tesseract đã bắt đầu vẫn chịu timeout của backend.
+- Custom: tối đa 30 quy tắc, tên 60 ký tự, pattern 200 ký tự, 12 nhóm/nhánh,
+  20 toán tử lặp, bound ≤ 1000. Không lookaround/backreference/recursion/inline flags.
+  Engine `regex` có timeout 50 ms/rule và ngân sách tổng 500 ms. Lỗi rule được báo
+  rõ, không dùng `eval`, không thực thi regex tùy ý đồng bộ trên frontend.
+- Chỉ lưu detection/settings trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
+  giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
+- Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
+  Service worker v2 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
+  Offline vẫn dùng UI/demo/đánh dấu/che/tải PNG; **OCR thật cần kết nối backend**.
+- Service worker và camera cần HTTPS hoặc localhost. Để thử trên điện thoại, dùng
+  HTTPS có chứng chỉ được thiết bị tin cậy. Nếu dùng `--host 0.0.0.0`, chỉ mở cổng
+  trong mạng tin cậy; HTTP qua IP LAN không bảo đảm hoạt động PWA/camera.
 
 ## Kiểm thử
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest tests/test_backend.py -q
+.\.venv\Scripts\python.exe -m pytest tests -q
 npm ci
 npm test
 npx playwright install chromium
 npm run test:e2e
 ```
 
-E2E tự mở server tại cổng 8000 nếu chưa có; chạy từ root repository. Khi dùng venv,
-đặt Python venv lên PATH hoặc kích hoạt venv trước `npm run test:e2e`. Bộ kiểm thử
-bao gồm pixel của PNG đã che, upload không có kết quả giả, quy tắc chống chèn HTML,
-manual mode, camera giả lập, offline/cache và bố cục mobile. Ảnh chụp kiểm tra nằm
-trong `test-results/` (không đưa lên Git). Camera thật và lời mời cài đặt PWA cần
-kiểm tra thêm trên thiết bị mục tiêu; camera trong E2E dùng thiết bị giả của Chromium.
+E2E khởi động server riêng tại **8012**, không tái sử dụng server cũ tại cổng 8000.
+Có thể đặt `$env:SCREENGUARD_TEST_PORT = '8013'` nếu cần. Khi dùng venv, kích hoạt
+venv hoặc đặt Python venv lên PATH trước khi gọi npm/Playwright.
 
+Unit tests dùng token tổng hợp để kiểm tra mapping/luật. **Integration tests thực sự
+chạy Tesseract trên ảnh PNG/JPEG** và browser gọi API thật, kiểm tra cả pixel ảnh
+xuất. Nếu không có engine/ngôn ngữ, các integration tests liên quan được đánh dấu
+skip với lý do, không giả OCR để báo pass. Tóm tắt TC01–TC13 ở [VALIDATION](docs/VALIDATION.md).
+Ảnh kiểm tra giao diện nằm trong `test-results/`, không commit.
+
+Tạo lại ảnh hư cấu: `python sample_data/generate_samples.py` (cần Arial/DejaVu Sans).
 Tạo lại icon: `python scripts/generate_icons.py`.
 
-## Git
+## Cấu trúc
 
-Chỉ triển khai trên `tuvy1`. Không sửa trực tiếp, merge hoặc push vào `main`.
-Không commit ảnh cá nhân, `.venv`, cache hoặc kết quả kiểm thử.
+- `frontend/js/services/scanner-service.js`: multipart client, validation findings,
+  adapter cho Canvas; mock nằm riêng trong `mock-scanner.js`.
+- `backend/api/`: health, validation, giới hạn multipart, scan worker.
+- `core/ocr.py`: Tesseract, EXIF/RGB, token/line/span mapping, language fallback.
+- `core/detector.py`, `core/rules.py`: luật PII, context, dedup, Regex có timeout.
+- `core/models.py`, `core/pipeline.py`: contracts và ghép pipeline thực tế.
+- `core/redactor.py`: redactor Python tùy chọn; UI tiếp tục dùng Canvas đã kiểm thử.
 
-Tài liệu nền tảng: [FastAPI StaticFiles](https://fastapi.tiangolo.com/tutorial/static-files/),
-[MDN Service Workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers).
+Xem [hợp đồng tích hợp](docs/INTEGRATION.md). Tham khảo chính thức:
+[pytesseract](https://github.com/madmaze/pytesseract),
+[Tesseract installation](https://tesseract-ocr.github.io/tessdoc/Installation.html),
+[regex timeout](https://pypi.org/project/regex/),
+[FastAPI multipart](https://fastapi.tiangolo.com/tutorial/request-forms-and-files/).

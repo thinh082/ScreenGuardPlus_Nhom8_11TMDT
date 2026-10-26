@@ -7,8 +7,8 @@ from backend.api.routes import router
 
 app = FastAPI(
     title="ScreenGuard+ API",
-    version="0.1.0",
-    description="Phase 1: local UI and integration contracts. Real OCR/PII is not implemented.",
+    version="0.2.0",
+    description="Local Tesseract OCR and contextual PII detection; no cloud processing or persistent image storage.",
 )
 
 

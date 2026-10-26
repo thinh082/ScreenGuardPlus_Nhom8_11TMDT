@@ -3,5 +3,5 @@ from core.pipeline import run_pipeline
 
 
 def scan_image(image: bytes, config: DetectionConfig, content_type: str) -> ScanResult:
-    """Adapter seam for a future OCR worker; no storage or network side effects."""
+    """Synchronous local OCR adapter; caller runs it in a bounded worker thread."""
     return run_pipeline(image, config, content_type)

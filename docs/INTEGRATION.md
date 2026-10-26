@@ -1,67 +1,45 @@
-# Hợp đồng tích hợp · Phase 1
+# Hợp đồng tích hợp · Phase 2
 
-## Frontend ES Modules
+## API
 
-### `validateImage(file: File): true`
-
-`frontend/js/services/scanner-service.js`. Kiểm tra MIME PNG/JPEG/WebP, tệp không rỗng,
-≤ 10 MB. `decodeImage(file)` decode bytes, kiểm tra ≤ 20 MP và trả Canvas. File bị
-hỏng hoặc MIME không hỗ trợ ném `Error`. SVG không được nhận. Canvas dùng ảnh theo
-hướng hiển thị trình duyệt (đã áp dụng EXIF orientation).
-
-### `scanImage(image: HTMLCanvasElement, config, options?): Promise<ScanResult>`
-
-```js
-const result = await scanImage(canvas, getDetectionConfig(), {
-  signal: abortController.signal,
-  onProgress: (percent) => {},
-  // fixtureId chỉ được gán bởi nút demo, tuyệt đối không suy từ tên file upload.
-});
-```
-
-```js
-{
-  status: 'unavailable', // Phase 1 uploads; future provider: 'complete'
-  source: 'none',       // future provider: 'ocr'
-  width: 960, height: 640,
-  findings: [],
-  message: 'OCR thực tế chưa tích hợp…'
-}
-```
-
-Mock trả `status: 'demo', source: 'mock'` và nằm riêng trong `mock-scanner.js`.
-Chỉ `DEMO_ID` của fixture tích hợp được phép chạy mock. Với ảnh bất kỳ, không trả
-findings mẫu, không ghi “an toàn” hoặc “không phát hiện PII” khi OCR chưa chạy.
-Tiến trình trên UI hiện là mô phỏng, không phải đo tiến độ Tesseract.
-
-Mẫu finding (tọa độ pixel, gốc trên trái):
+### `GET /api/health`
 
 ```json
 {
-  "id": "unique-id",
-  "type": "email",
-  "label": "Địa chỉ email",
-  "text": "fictional@example.com",
-  "risk": "medium",
-  "box": { "x": 280, "y": 216, "width": 426, "height": 42 }
+  "status": "ok",
+  "backend_available": true,
+  "phase": 2,
+  "tesseract_installed": true,
+  "languages": ["eng", "vie"],
+  "ocr_available": true,
+  "detector_available": true,
+  "stores_images": false,
+  "processing": "python_backend"
 }
 ```
 
-Type: `email | phone | cccd | student | bank | custom | manual`.
-Risk: `low | medium | high`. Mọi box phải nằm trong ảnh gốc. Không quy đổi về
-tọa độ CSS trước khi trả kết quả. Renderer tự scale để hiển thị.
+Các giá trị OCR/languages là trạng thái thực tế của máy chạy backend, không hardcode.
+Không trả đường dẫn cài engine hoặc dữ liệu người dùng.
 
-### `redactImage(image: CanvasImageSource, selectedFindings): HTMLCanvasElement`
+### `POST /api/scan`
 
-Canvas mới, màu đục `#111827`, giữ kích thước gốc. Chỉ gọi với findings đã chọn.
-Sau khi thay đổi selection, UI vô hiệu hóa ảnh xuất cũ và yêu cầu che lại. Before
-hiển thị bounding boxes; After và PNG chỉ chứa pixels đã che, không có lớp highlight.
+Multipart gồm đúng **một `image`** và **một `config`**:
 
-### `getDetectionConfig()` / `updateDetectionConfig(config)`
+```js
+const form = new FormData();
+form.append("image", pngBlob, "scan.png");
+form.append("config", JSON.stringify(getDetectionConfig()));
+const response = await fetch("./api/scan", {
+  method: "POST",
+  body: form,
+  signal,
+  cache: "no-store",
+});
+```
 
-`config-service.js` trả bản sao, không cho caller thay đổi state ngầm.
-`updateDetectionConfig` validate và trả `{ config, persisted }`; `persisted: false`
-nghĩa là storage bị chặn và chỉ lưu trong RAM.
+`image`: PNG/JPEG/WebP ≤ 10 MiB, ≤ 20 MP. Đuôi file không được tin; MIME phải khớp
+bytes thực tế. Frontend hiện gửi PNG được vẽ từ Canvas đã áp EXIF để tọa độ khớp.
+`config`: JSON ≤ 64 KiB theo `DetectionConfig`, giữ cấu trúc Phase 1:
 
 ```json
 {
@@ -76,10 +54,10 @@ nghĩa là storage bị chặn và chỉ lưu trong RAM.
   "rules": [
     {
       "id": "uuid",
-      "name": "Mã nhân viên",
+      "name": "Staff",
       "kind": "regex",
       "pattern": "NV-[0-9]{6}",
-      "risk": "medium",
+      "risk": "high",
       "enabled": true
     }
   ],
@@ -89,61 +67,104 @@ nghĩa là storage bị chặn và chỉ lưu trong RAM.
 }
 ```
 
-Mode: `auto | manual`, sensitivity: `low | balanced | high`, language:
-`vie | eng | vie+eng`. Tối đa 30 quy tắc, tên ≤ 60, pattern ≤ 200 ký tự.
-Custom bật/tắt là master switch: detector tương lai chỉ dùng quy tắc enabled nếu
-`types.custom === true`. Trình mô phỏng hiện chỉ lọc 5 loại fixture, không thực thi
-custom rule, độ nhạy hay ngôn ngữ. Regex JS và Python khác nhau; cần thống nhất cú
-pháp khi tích hợp, không giả định mọi biểu thức JS đều được Python hỗ trợ.
+`mode`: auto/manual điều khiển thời điểm UI gọi API. `language`: vie/eng/vie+eng;
+thiếu vie sẽ dùng eng khi có và trả warnings. `sensitivity`: low/balanced/high là
+ngưỡng OCR confidence trung bình tối thiểu .60/.20/0, không phải điểm xác suất.
+`types.custom` là master switch; từng rule cũng phải enabled. Không lưu cấu hình tại server.
 
-## Python core
-
-| Hàm                                         | Input → output                                                                    |
-| ------------------------------------------- | --------------------------------------------------------------------------------- |
-| `validate_image(image, content_type=None)`  | bytes → `(width, height)`; raises `ImageValidationError`                          |
-| `extract_text(image, language)`             | bytes → `OCRResult`; hiện raises `OCRUnavailableError`                            |
-| `detect_sensitive_text(ocr_result, rules)`  | `OCRResult, DetectionConfig` → `list[Finding]`; hiện raises `NotImplementedError` |
-| `redact_image(image, selected_findings)`    | bytes, list → PNG bytes, không ghi file                                           |
-| `run_pipeline(image, config, content_type)` | validate → OCR → detection → `ScanResult`                                         |
-
-Models ở `core/models.py`. `OCRResult` có `width`, `height`, `language`, `blocks`;
-mỗi block có `text`, `box`, `confidence` trong [0,1]. Chuẩn hóa EXIF orientation
-trước OCR và trả kích thước theo ảnh đã xoay; backend redactor cũng dùng hướng này.
-Production Python `ScanResult` chỉ cho `source='ocr', status='complete'`, không nhận mock.
-
-## API hiện tại
-
-- `GET /api/health`: trạng thái app, `ocr` và `pii` là `not_implemented`.
-- `GET /api/config`: cấu hình mặc định, không phải cấu hình riêng của người dùng.
-- `POST /api/scan`: raw image bytes, header `Content-Type: image/png | image/jpeg |
-image/webp`. Validate format, MIME thực tế, kích thước. 415: sai MIME; 413: >10 MB;
-  422: bytes hỏng hoặc >20 MP. Ảnh hợp lệ hiện nhận 501:
+Response minh họa schema (giá trị thực tế do OCR/detector tạo):
 
 ```json
 {
-  "detail": {
-    "code": "OCR_NOT_IMPLEMENTED",
-    "message": "Real OCR is not integrated in Phase 1. Use the built-in browser demo or mark regions manually."
-  }
+  "mode": "real_ocr",
+  "width": 1500,
+  "height": 550,
+  "language": "vie+eng",
+  "findings": [
+    {
+      "id": "generated-uuid",
+      "type": "EMAIL",
+      "label": "Địa chỉ email",
+      "bbox": [439, 50, 959, 87],
+      "risk": "HIGH",
+      "score": 0.95,
+      "ocr_confidence": 0.9,
+      "preview": "te***@example.com",
+      "source": "ocr_regex"
+    }
+  ],
+  "warnings": [],
+  "message": "Đã nhận diện văn bản. Kết quả tự động có thể bỏ sót thông tin; vui lòng kiểm tra lại ảnh trước khi chia sẻ."
 }
 ```
 
-Không có server config/session, authentication hoặc storage. Chưa có API ghi cấu hình
-hoặc upload lưu file. Frontend Phase 1 **không gọi `/api/scan`**.
+- `bbox = [left, top, right, bottom]`, pixel trên ảnh đã áp EXIF, cạnh phải/dưới exclusive.
+- API types: EMAIL, PHONE, CITIZEN_ID, STUDENT_ID, BANK_ACCOUNT, CUSTOM.
+- Risk: LOW/MEDIUM/HIGH. `source`: ocr_regex/ocr_keyword.
+- `ocr_confidence` lấy từ Tesseract, trung bình theo số ký tự các token liên quan.
+- `score` là heuristic luật phát hiện, không phải xác suất thống kê.
+- Không trả raw OCR text hoặc raw PII; `preview` đã che bớt ký tự. Nội dung đầy đủ
+  chỉ tồn tại tạm trong pipeline Python.
+- 413: vượt giới hạn; 415: sai media type; 422: ảnh/config/rule không hợp lệ hoặc
+  Regex vượt timeout; 503: engine/ngôn ngữ chưa sẵn sàng hoặc worker bận; 504: OCR
+  thất bại/quá 25 giây. Lỗi có `detail` là chuỗi hoặc `{code, message}`, không chứa stack trace.
+- Mọi API response có `Cache-Control: no-store`. Cấu hình/ảnh/PII không được thêm
+  vào service worker cache.
 
-Khi nối backend thật, mở rộng hợp đồng request để truyền DetectionConfig (ví dụ multipart
-image + JSON config đã validate), cập nhật OpenAPI, rồi thay nhánh unavailable trong
-`scanner-service.js` bằng adapter API. Hiển thị rõ cho người dùng trước khi thay đổi
-cam kết xử lý tại thiết bị. Không âm thầm chuyển ảnh sang dịch vụ cloud.
+### `GET /api/config` và `POST /api/config/validate`
 
-## Điều kiện trước khi nối OCR/PII
+GET trả defaults. POST nhận JSON DetectionConfig để kiểm tra schema/Regex và trả
+`{"valid":true}`. Không lưu trên server. Frontend xác thực khi thêm rule; nếu backend
+không kết nối, có thể lưu cấu hình cục bộ đã kiểm tra cú pháp để xác thực lại lúc scan.
+Tối đa 30 rules, tên 60, pattern 200 ký tự; không lookaround, recursion, backreference
+hoặc inline flags. Giới hạn 12 nhóm, 12 nhánh, 20 toán tử lặp, bound ≤ 1000.
+Khi chạy: timeout 50 ms/rule, tổng 500 ms, tối đa 500 findings.
 
-- Tesseract cài local với traineddata `vie` và `eng`; xử lý ngoài event loop server.
-- Giữ dữ liệu ảnh/OCR trong RAM, không log PII; không ghi file tạm nếu không cần.
-- Validate lại findings từ provider, giới hạn số lượng và kiểm tra box nằm trong ảnh.
-- Regex tùy chỉnh cần worker/process hoặc engine có timeout để chặn catastrophic
-  backtracking; không chạy regex tùy ý đồng bộ trên UI/event loop.
-- Respect enabled types/rules, language và sensitivity, định nghĩa rõ ngưỡng thực tế.
-- Giữ cảnh báo có thể bỏ sót PII; giữ cách đánh dấu thủ công và review trước xuất.
-- Mở rộng kiểm thử fixtures tiếng Việt có dấu, EXIF, ảnh mờ, false positive/negative.
-- Không thêm endpoint chứa ảnh/PII vào service-worker allowlist; API luôn `no-store`.
+## Python
+
+- `validate_image(bytes, content_type=None)` → kích thước ảnh lưu trước áp EXIF.
+- `extract_text(bytes, language)` → `OCRResult(width,height,language,text,blocks,lines,warnings)`.
+  Kích thước/tọa độ theo ảnh hiển thị sau EXIF; không resize. Mỗi OCRBlock có text,
+  box x/y/width/height, confidence 0..1 và line_id page/block/paragraph/line của Tesseract.
+- `build_lines(blocks)` → text của từng dòng và TokenSpan(start,end,token_index).
+  Detector tìm character spans trên dòng và lấy union các token giao với span.
+  Không dùng tọa độ của riêng token đầu hoặc che toàn dòng. Mở rộng 2 px và clamp vào ảnh.
+- `detect_sensitive_text(ocr_result, config)` → `list[Finding]` nội bộ với type/risk
+  chữ thường và raw text tạm thời. `run_pipeline` chuyển sang `APIFinding` masked.
+- `run_pipeline(bytes, config, content_type)` → `ScanResult` thực, không import mock.
+- `redact_image(bytes, selected_findings)` giữ API Phase 1, xuất PNG đục không EXIF.
+
+OCR/detector chạy trong threadpool, giới hạn 2 worker slots, không chặn event loop.
+Multipart giữ trong RAM dưới giới hạn request. Pytesseract dùng temporary files để
+nói chuyện với Tesseract CLI và dọn sau tác vụ; không có persistent upload directory.
+Không log text hoặc bytes; không chuyển lỗi gốc Tesseract chứa đường dẫn ra người dùng.
+
+## JavaScript và tương thích Canvas
+
+`validateImage(file)` và `decodeImage(file)` giữ API Phase 1.
+
+`scanImage(canvas, config, {signal, onProgress, fixtureId})`:
+
+- Không có fixtureId: encode PNG, POST cùng origin, validate response (kích thước,
+  type/risk, ID, bbox trong ảnh, score/confidence), đổi API types sang chữ thường
+  và bbox sang `{x,y,width,height}`. Trả `status:'complete', source:'ocr'`.
+- Dữ liệu sidebar dùng masked preview qua escapeHTML; không inject OCR text.
+- `onProgress(null,label)` cho giai đoạn không đo được phần trăm; không mô phỏng
+  phần trăm Tesseract. Hoàn tất trả 100. Timeout mạng 35 giây, signal được chuyển tiếp.
+- fixtureId chỉ do nút demo gán: mock giữ riêng, không gửi ảnh tới API, không dùng cho upload.
+- Lỗi ném Error, không trả kết quả giả/empty như một lần OCR thành công. UI hiển thị
+  lỗi và mở lại công cụ đánh dấu thủ công. Không có findings chỉ được báo khi scan thành công.
+- Findings thủ công được giữ khi quét lại cùng ảnh, ghép với kết quả tự động mới.
+  Đổi selection làm vô hiệu hóa PNG cũ; cần che lại trước khi tải.
+
+`redactImage(canvas, findings)` → Canvas mới tô đục #111827, nguyên kích thước.
+Không thay thuật toán che Phase 1. `getDetectionConfig`/`updateDetectionConfig` vẫn
+lưu riêng trên thiết bị và trả bản sao. Hủy fetch/rời trang không đồng nghĩa dừng
+ngay Tesseract đã bắt đầu; server sẽ dọn theo timeout giới hạn.
+
+## Điều còn có thể cải thiện
+
+PSM 6 phù hợp khối văn bản tương đối thẳng hàng; cần đánh giá thêm tài liệu nhiều cột,
+chữ nhỏ/mờ, handwritten và OCR trên nền phức tạp. Luật SĐT hiện hỗ trợ số di động VN;
+CCCD/MSSV/STK là pattern + context, không xác minh danh tính hoặc tài khoản có thật.
+Không suy diễn kết quả heuristic thành bảo đảm ảnh an toàn.

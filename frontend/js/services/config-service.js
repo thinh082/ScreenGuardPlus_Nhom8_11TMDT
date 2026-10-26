@@ -5,7 +5,7 @@ export const DATA_TYPES = [
     short: "Email",
     icon: "mail",
     example: "ten@vidu.com",
-    risk: "medium",
+    risk: "high",
     description: "Địa chỉ email cá nhân, học tập và công việc.",
   },
   {
@@ -96,6 +96,16 @@ export function validateConfig(config) {
       throw new Error("Quy tắc không hợp lệ (tên ≤ 60, mẫu ≤ 200 ký tự).");
     ids.add(rule.id);
     if (rule.kind === "regex") {
+      if (
+        /\(\?(?!:)|\\(?:[1-9]|g[<{]|k[<{])/.test(rule.pattern) ||
+        (rule.pattern.match(/\(/g) || []).length > 12 ||
+        (rule.pattern.match(/\|/g) || []).length > 12 ||
+        (rule.pattern.match(/(?<!\\)[*+?{]/g) || []).length > 20 ||
+        [...rule.pattern.matchAll(/\{(\d+(?:,\d*)?)\}/g)].some((match) =>
+          match[1].split(",").some((value) => value && Number(value) > 1000),
+        )
+      )
+        throw new Error("Regex quá phức tạp hoặc dùng cú pháp không hỗ trợ.");
       try {
         new RegExp(rule.pattern, "iu");
       } catch {
@@ -128,4 +138,29 @@ export function updateDetectionConfig(config) {
 }
 export function resetDetectionConfig() {
   return updateDetectionConfig(structuredClone(DEFAULT_CONFIG));
+}
+export async function validateConfigWithBackend(config) {
+  validateConfig(config);
+  let response;
+  try {
+    response = await fetch("./api/config/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    return false;
+  }
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    if (response.status === 404 || response.status >= 500) return false;
+    throw new Error(
+      typeof result?.detail === "string"
+        ? result.detail
+        : "Cấu hình không hợp lệ.",
+    );
+  }
+  return true;
 }

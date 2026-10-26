@@ -2,7 +2,7 @@
   "id": "./",
   "name": "ScreenGuard+ — Bảo vệ trước khi chia sẻ",
   "short_name": "ScreenGuard+",
-  "description": "Kiểm tra và che thông tin cá nhân trên hình ảnh, xử lý ngay trên thiết bị.",
+  "description": "OCR tại Python backend, kiểm tra và che thông tin cá nhân trước khi chia sẻ hình ảnh.",
   "lang": "vi",
   "start_url": "./#/",
   "scope": "./",

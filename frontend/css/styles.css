@@ -1,4 +1,8 @@
 @charset "UTF-8";
+#scan-warnings:not(:empty) {
+  margin: 14px 22px;
+  line-height: 1.8;
+}
 :root {
   color-scheme: dark;
   --bg: #0c121c;

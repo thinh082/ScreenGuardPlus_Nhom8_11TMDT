@@ -39,33 +39,137 @@ export async function scanImage(
 ) {
   if (!image?.width || !image?.height)
     throw new Error("Chưa có ảnh để kiểm tra.");
-  for (const percent of [10, 35, 70, 100]) {
-    signal?.throwIfAborted();
-    await new Promise((resolve, reject) => {
-      const abort = () => {
-        clearTimeout(timer);
-        reject(new DOMException("Đã hủy", "AbortError"));
-      };
-      const timer = setTimeout(() => {
-        signal?.removeEventListener("abort", abort);
-        resolve();
-      }, 180);
-      signal?.addEventListener("abort", abort, { once: true });
-    });
-    signal?.throwIfAborted();
-    onProgress(percent);
-  }
+  if (fixtureId)
+    for (const percent of [10, 35, 70, 100]) {
+      signal?.throwIfAborted();
+      await new Promise((resolve, reject) => {
+        const abort = () => {
+          clearTimeout(timer);
+          reject(new DOMException("Đã hủy", "AbortError"));
+        };
+        const timer = setTimeout(() => {
+          signal?.removeEventListener("abort", abort);
+          resolve();
+        }, 180);
+        signal?.addEventListener("abort", abort, { once: true });
+      });
+      signal?.throwIfAborted();
+      onProgress(percent);
+    }
   if (fixtureId) return mockScan(fixtureId, config);
-  // Integration seam: replace with a real OCR provider. No pixels leave the browser in Phase 1.
-  return {
-    status: "unavailable",
-    source: "none",
-    width: image.width,
-    height: image.height,
-    findings: [],
-    message:
-      "OCR thực tế chưa tích hợp. Ảnh này chưa được nhận diện; hãy tự đánh dấu vùng cần che.",
-  };
+  signal?.throwIfAborted();
+  onProgress(null, "Chuẩn bị ảnh gửi đến Python backend…");
+  const blob = await new Promise((resolve) =>
+    image.toBlob(resolve, "image/png"),
+  );
+  signal?.throwIfAborted();
+  if (!blob || blob.size > MAX_BYTES)
+    throw new Error(
+      "Ảnh PNG sau chuyển đổi vượt 10 MB hoặc không xuất được. Hãy chọn ảnh nhỏ hơn.",
+    );
+  const form = new FormData();
+  form.append("image", blob, "scan.png");
+  form.append("config", JSON.stringify(config));
+  const timeout = new AbortController();
+  const timer = setTimeout(() => timeout.abort(), 35000);
+  const abort = () => timeout.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    onProgress(null, "Đang nhận diện văn bản…");
+    const response = await fetch("./api/scan", {
+      method: "POST",
+      body: form,
+      signal: timeout.signal,
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok)
+      throw new Error(
+        typeof result?.detail === "string"
+          ? result.detail
+          : result?.detail?.message ||
+              "Không xử lý được ảnh. Hãy kiểm tra Python backend.",
+      );
+    const types = {
+      EMAIL: "email",
+      PHONE: "phone",
+      CITIZEN_ID: "cccd",
+      STUDENT_ID: "student",
+      BANK_ACCOUNT: "bank",
+      CUSTOM: "custom",
+    };
+    if (
+      result?.mode !== "real_ocr" ||
+      result.width !== image.width ||
+      result.height !== image.height ||
+      !Array.isArray(result.findings) ||
+      result.findings.length > 500
+    )
+      throw new Error("Kết quả OCR không khớp kích thước ảnh. Hãy thử lại.");
+    const ids = new Set();
+    const findings = result.findings.map((f) => {
+      const [x, y, right, bottom] = f.bbox || [];
+      if (
+        !types[f.type] ||
+        ids.has(f.id) ||
+        typeof f.id !== "string" ||
+        !["LOW", "MEDIUM", "HIGH"].includes(f.risk) ||
+        ![x, y, right, bottom].every(Number.isFinite) ||
+        x < 0 ||
+        y < 0 ||
+        right <= x ||
+        bottom <= y ||
+        right > image.width ||
+        bottom > image.height ||
+        typeof f.preview !== "string" ||
+        typeof f.label !== "string" ||
+        !Number.isFinite(f.score) ||
+        f.score < 0 ||
+        f.score > 1 ||
+        !Number.isFinite(f.ocr_confidence) ||
+        f.ocr_confidence < 0 ||
+        f.ocr_confidence > 1
+      )
+        throw new Error("API trả về vùng nhận diện không hợp lệ.");
+      ids.add(f.id);
+      return {
+        ...f,
+        type: types[f.type],
+        risk: f.risk.toLowerCase(),
+        text: f.preview,
+        box: { x, y, width: right - x, height: bottom - y },
+      };
+    });
+    onProgress(100, "Đã hoàn tất nhận diện.");
+    return { ...result, status: "complete", source: "ocr", findings };
+  } catch (error) {
+    if (signal?.aborted) throw new DOMException("Đã hủy", "AbortError");
+    if (timeout.signal.aborted)
+      throw new Error(
+        "OCR quá thời gian chờ. Bạn vẫn có thể đánh dấu vùng thủ công.",
+      );
+    if (error instanceof TypeError)
+      throw new Error(
+        "Không kết nối được Python backend. Kiểm tra server/mạng; bạn vẫn có thể đánh dấu thủ công.",
+      );
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+export async function getBackendHealth() {
+  try {
+    const response = await fetch("./api/health", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) throw new Error();
+    const health = await response.json();
+    return health.backend_available ? health : { ocr_available: false };
+  } catch {
+    return { backend_available: false, ocr_available: false };
+  }
 }
 export function redactImage(image, selectedFindings) {
   const canvas = document.createElement("canvas");
