@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "ScreenGuard+ — Bảo vệ trước khi chia sẻ",
+  "short_name": "ScreenGuard+",
+  "description": "Kiểm tra và che thông tin cá nhân trên hình ảnh, xử lý ngay trên thiết bị.",
+  "lang": "vi",
+  "start_url": "./#/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c121c",
+  "theme_color": "#0b121d",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
