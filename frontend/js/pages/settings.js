@@ -6,15 +6,34 @@ import {
   resetDetectionConfig,
 } from "../services/config-service.js";
 import { getBackendHealth } from "../services/scanner-service.js";
+import {
+  desktopSettingsView,
+  mountDesktopSettings,
+} from "../components/desktop-settings.js";
 export function settingsPage(main) {
   let config = getDetectionConfig(),
-    disposed = false;
+    disposed = false,
+    cleanupDesktop;
   function render() {
+    cleanupDesktop?.();
     main.innerHTML =
       heading("", "Cài đặt", "Điều chỉnh cách bảo vệ của bạn.") +
       `
-      <section class="settings-section"><h2>Quét ảnh</h2><div class="setting-list"><div class="setting-row"><div><strong>Tự động sau khi nhập ảnh</strong><small>Áp dụng khi chọn, thả hoặc chụp ảnh.</small></div><span class="setting-value">Đang bật</span><input class="sr-only" type="radio" name="mode" value="auto" checked disabled aria-label="Quét tự động"></div><div class="setting-row"><div><strong>Thủ công</strong><small>Chọn Quét lại trong menu tùy chọn ảnh.</small></div></div><div class="setting-row"><strong>Giám sát nền</strong><span class="muted">Chưa hỗ trợ</span></div></div></section>
+      <section class="settings-section"><h2>Quét ảnh</h2><div class="setting-list"><div class="setting-row"><div><strong>Tự động sau khi nhập ảnh</strong><small>Áp dụng khi chọn, thả hoặc chụp ảnh.</small></div><span class="setting-value">Đang bật</span><input class="sr-only" type="radio" name="mode" value="auto" checked disabled aria-label="Quét tự động"></div><div class="setting-row"><div><strong>Thủ công</strong><small>Chọn Quét lại trong menu tùy chọn ảnh.</small></div></div><div class="setting-row"><strong>Giám sát toàn hệ thống</strong><span class="muted">Chưa hỗ trợ</span></div></div></section>
       <div class="settings-columns"><section class="settings-section"><h2>Nhận diện</h2><div class="setting-list"><label class="setting-row"><strong>Ngôn ngữ</strong><select id="language"><option value="vie+eng">Tiếng Việt + English</option><option value="vie">Tiếng Việt</option><option value="eng">English</option></select></label><label class="setting-row"><strong>Độ nhạy</strong><select id="sensitivity"><option value="low">Thấp</option><option value="balanced">Cân bằng</option><option value="high">Cao</option></select></label><details class="advanced-details system-details"><summary>Chi tiết nhận diện</summary><div class="system-grid"><div><span>OCR</span><strong id="settings-ocr">Đang kiểm tra…</strong></div><div><span>Ứng dụng ngoại tuyến</span><strong id="sw-status">Đang kiểm tra…</strong></div><div><span>Kết nối</span><strong id="settings-network">${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}</strong></div></div><p>Ngưỡng OCR Thấp / Cân bằng / Cao: 60% / 20% / 0%. Tài khoản có nhãn rõ vẫn có thể được đề xuất ở Cân bằng hoặc Cao khi đọc chưa rõ. Điểm luật là heuristic, không phải xác suất. Thiếu gói tiếng Việt sẽ dùng tiếng Anh nếu có.</p></details></div></section><section class="settings-section"><h2>Quyền riêng tư</h2><div class="setting-list"><div class="setting-row"><div><strong>Xử lý ảnh tại máy chủ ứng dụng</strong><small>Không dùng dịch vụ OCR bên thứ ba.</small></div></div><div class="setting-row"><div><strong>Ảnh và kết quả chỉ dùng trong phiên</strong><small>Không lưu vào lịch sử hoặc bộ nhớ ngoại tuyến.</small></div></div><div class="setting-row"><button id="reset-settings" class="text-button">Khôi phục mặc định</button></div></div></section></div>`;
+    // Reuse the existing groups in two flat columns; keep Windows controls first.
+    const groups = [...main.querySelectorAll(".settings-section")];
+    const columns = document.createElement("div");
+    columns.className = "settings-columns";
+    const left = document.createElement("div"),
+      right = document.createElement("div");
+    left.innerHTML = desktopSettingsView();
+    left.append(groups[2]);
+    right.append(groups[0], groups[1]);
+    main.querySelector(".settings-columns").remove();
+    columns.append(left, right);
+    main.append(columns);
+    cleanupDesktop = mountDesktopSettings(main);
     main.querySelector("#sensitivity").value = config.sensitivity;
     main.querySelector("#language").value = config.language;
     getBackendHealth().then((health) => {
@@ -75,6 +94,7 @@ export function settingsPage(main) {
   window.addEventListener("offline", network);
   return () => {
     disposed = true;
+    cleanupDesktop?.();
     window.removeEventListener("online", network);
     window.removeEventListener("offline", network);
   };

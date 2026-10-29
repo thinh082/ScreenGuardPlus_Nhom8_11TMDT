@@ -6,6 +6,7 @@ import { scannerPage } from "./pages/scanner.js";
 import { configurationPage } from "./pages/configuration.js";
 import { settingsPage } from "./pages/settings.js";
 import { getTheme, toggleTheme } from "./services/theme-service.js";
+import { syncDesktopConfig } from "./services/desktop-service.js";
 
 const navigation = [
   ["/scanner", "scan", "Kiểm tra ảnh"],
@@ -93,6 +94,13 @@ registerRoute("/scanner", scannerPage);
 registerRoute("/configuration", configurationPage);
 registerRoute("/settings", settingsPage);
 startRouter();
+// The agent retains the last synchronized config while the PWA is closed.
+const syncCompanion = () =>
+  syncDesktopConfig().catch((error) => {
+    if (error.desktopConfig) toast(error.message, true);
+  });
+window.addEventListener("configchange", syncCompanion);
+syncCompanion();
 let deferredPrompt;
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();

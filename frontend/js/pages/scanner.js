@@ -3,6 +3,7 @@ import { escapeHTML, toast } from "../components/ui.js";
 import { scannerView } from "../components/scanner-view.js";
 import { getDetectionConfig } from "../services/config-service.js";
 import { createDemoCanvas, DEMO_ID } from "../services/mock-scanner.js";
+import { loadDesktopReview } from "../services/desktop-service.js";
 import {
   decodeImage,
   scanImage,
@@ -267,7 +268,7 @@ export function scannerPage(main) {
     $("#toggle-draw").classList.remove("active");
     $("#toggle-draw").setAttribute("aria-pressed", "false");
   }
-  function loadCanvas(canvas, name, id = null) {
+  function loadCanvas(canvas, name, id = null, scanned = null) {
     controller?.abort();
     busy = false;
     original = canvas;
@@ -299,7 +300,13 @@ export function scannerPage(main) {
       $("#coordinate-form").elements[field].max = canvas.height;
     setError();
     renderFindings();
-    runScan();
+    if (scanned) {
+      findings = scanned.findings;
+      selected = new Set(findings.map((f) => f.id));
+      $("#result-status").textContent = scanned.message;
+      $("#scan-warnings").textContent = (scanned.warnings || []).join(" ");
+      setBusy(false);
+    } else runScan();
   }
   async function importFile(file) {
     if (!file) return;
@@ -732,7 +739,31 @@ export function scannerPage(main) {
   resize.observe(preview);
   // Only rerender on CSS size changes: resizing backing pixels can trigger observers in some engines.
   renderFindings();
-  if (location.hash.includes("?demo")) {
+  const reviewId = new URLSearchParams(location.hash.split("?")[1] || "").get(
+    "review",
+  );
+  if (reviewId) {
+    const reviewGeneration = ++generation;
+    controller = new AbortController();
+    const reviewController = controller;
+    setBusy(true);
+    loadDesktopReview(reviewId, reviewController.signal)
+      .then(({ canvas, result }) => {
+        if (!disposed && reviewGeneration === generation)
+          loadCanvas(canvas, "Screenshot từ Windows", null, result);
+      })
+      .catch((error) => {
+        if (
+          !disposed &&
+          reviewGeneration === generation &&
+          error.name !== "AbortError"
+        ) {
+          setError(error.message);
+          setBusy(false);
+        }
+      });
+    history.replaceState(null, "", "#/scanner");
+  } else if (location.hash.includes("?demo")) {
     loadCanvas(createDemoCanvas(), "Tài liệu mẫu ScreenGuard+", DEMO_ID);
   }
   return () => {

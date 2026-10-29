@@ -135,3 +135,30 @@ File thay đổi:
 
 Chưa triển khai thêm giám sát nền (ngoài phạm vi Phase 3). Camera trong E2E là
 camera giả lập; chưa xác minh lời mời cài PWA và camera vật lý trên điện thoại.
+
+## Phase 4 — Windows Screenshot Companion
+
+Triển khai tiến trình Python local thật, Watchdog trên thư mục được cho phép,
+Tesseract/core detector thật, WinRT toast, RAM review và Settings Running/Stopped.
+Backend và PWA cũ vẫn hoạt động khi không có companion. Không có findings demo
+được dùng cho screenshot của agent.
+
+- Bộ hồi quy: **70 Python + 6 JavaScript + 28 Playwright = 104 bài đạt, 0 fail,
+  0 skip**. Trong đó có 9 bài agent
+  mới và 2 bài E2E agent. Các bài có điều kiện OCR không skip trên máy eng/vie này.
+- Python xác minh create/move/partial/corrupt/dedup/stop và JPEG EXIF bằng Watchdog
+  Windows + Tesseract thật. Kiểm tra loopback/Origin/Host/cookie/CSRF, 410 sau xóa,
+  TTL/eviction, folder confinement và config/consent không chứa lịch sử ảnh.
+- E2E đóng toàn bộ tab PWA trước khi tạo ảnh mới, sau đó mở đúng review URL nhận
+  từ recorder thông báo. Không gọi lại `/api/scan`; che/chọn/tải kiểm tra pixel cả
+  5 vùng. Tắt Bank trong PWA được áp dụng sang lần quét agent tiếp theo.
+- Native WinRT smoke riêng đã gửi thật và được tìm thấy trong notification history:
+  activation protocol, URL review local opaque, không chứa raw email. Không tính
+  recorder E2E thành chứng cứ banner/click Windows thực tế.
+- Bố cục Settings khi Running/Stopped và review được chụp trong
+  `test-results/phase4-{agent-running,agent-stopped,desktop-review}.png`.
+
+**Chưa xác minh trực tiếp**: Win+PrtScn, chọn folder trong dialog native và click
+thông báo Windows, vì Computer Use native pipe không khả dụng. Toàn bộ pipeline
+file mới → OCR → toast native đã được xác minh độc lập; thao tác phần cứng/desktop
+không được báo là pass. [Ma trận TC01–TC10 và cách chạy](WINDOWS_COMPANION.md).

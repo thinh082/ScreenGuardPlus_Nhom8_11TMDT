@@ -1166,6 +1166,9 @@ main:focus {
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
+.settings-columns > div > .settings-section:last-child {
+  margin-bottom: 0;
+}
 .setting-row {
   display: flex;
   align-items: center;
@@ -1193,6 +1196,32 @@ main:focus {
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
+}
+.desktop-settings .section-title {
+  align-items: flex-start;
+}
+.desktop-settings .section-title h2 {
+  font-size: 17px;
+}
+.desktop-settings #agent-state {
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+.agent-folder-row > div {
+  min-width: 0;
+}
+#agent-folder {
+  overflow-wrap: anywhere;
+  max-width: 340px;
+}
+#agent-message {
+  max-width: 340px;
+}
+.desktop-settings .setting-row > .text-button {
+  flex-shrink: 0;
+}
+.desktop-settings .advanced-details code {
+  overflow-wrap: anywhere;
 }
 .setting-list .advanced-details {
   padding: 12px 0;

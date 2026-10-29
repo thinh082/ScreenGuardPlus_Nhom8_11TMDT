@@ -1,6 +1,40 @@
-# Hợp đồng tích hợp · Phase 2.5
+# Hợp đồng tích hợp · Phase 4
 
 ## API
+
+Upload/OCR contracts cũ được giữ nguyên. Companion bổ sung API nội bộ bên dưới;
+không có service OCR thứ hai hoặc thay đổi schema findings.
+
+### Companion local: `/api/desktop/*`
+
+Entrypoint: `python -m desktop_agent.main`; dùng `create_app(companion)` và lifespan
+để khởi động/dừng Watchdog. Backend thường `backend.main:app` không tự khởi chạy
+agent. Mọi endpoint dưới đây chỉ nhận peer/Host loopback, Origin hợp lệ và không
+cho phép Fetch Metadata cross-site. Không CORS, không cache, không ghi body vào log.
+
+1. `GET /session` với `X-ScreenGuard-Client: pwa` và Fetch Metadata `same-origin`
+   (hoặc `none` khi điều hướng local) cấp cookie HttpOnly/SameSite Strict cùng CSRF
+   token trong JSON. Token chỉ ở bộ nhớ browser, cookie giới hạn path `/api/desktop`.
+2. Các request tiếp theo cần cookie và `X-ScreenGuard-CSRF`. GET không được miễn
+   kiểm tra token vì status có folder và review có ảnh. Phiên truy cập tối đa 12h.
+3. `GET /status`: `available`, `running`, `state`, `enabled`, `folder`; khi có agent
+   thêm `error`, `notification`, `pending_reviews`, `scanned`, `duplicates`,
+   `rejected`, `dropped`. Running được tính từ observer/emitter/worker thực tế.
+4. `POST /folder`: mở hộp chọn Windows; không nhận path từ HTTP. Chọn folder mới
+   luôn dừng theo dõi cũ; người dùng bật lại riêng. Hủy dialog giữ nguyên lựa chọn.
+5. `POST /control`: JSON `{enabled: boolean, config: DetectionConfig}`; không có
+   folder tùy ý. `POST /config`: DetectionConfig cập nhật các lần quét tiếp theo.
+   Mỗi body tối đa 64 KiB, dùng validator/custom rule limits hiện có.
+6. `GET /reviews/{opaque_id}`: `{image: <base64 PNG>, result: ScanResult}`. PNG đã
+   chuẩn hóa EXIF/alpha, bỏ metadata; dimensions/bboxes khớp core. Adapter chung
+   `adaptScanResult` kiểm tra schema trước khi vẽ. Không gọi lại `/api/scan`.
+7. `DELETE /reviews/{opaque_id}`: xóa RAM sau khi browser nhận ảnh; hết hạn trả 410.
+   Tối đa 8 phiên, 64 MiB, 10 phút; janitor dọn mỗi giây. Tắt agent xóa tất cả.
+
+URL toast chỉ là `http://127.0.0.1:<port>/#/scanner?review=<random_id>`. Không đưa
+path, OCR, PII, base64 hoặc token điều khiển vào URL. PWA bỏ ID khỏi URL sau khi nhận
+route. Không thêm endpoint native-test trong production. Chi tiết vận hành và các
+giới hạn kiểm thử ở [WINDOWS_COMPANION](WINDOWS_COMPANION.md).
 
 ### `GET /api/health`
 

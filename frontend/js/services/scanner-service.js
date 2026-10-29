@@ -99,58 +99,9 @@ export async function scanImage(
               "Chưa xử lý được ảnh. Hãy thử lại hoặc đánh dấu thủ công.",
       );
     onProgress(null, "Đang kiểm tra dữ liệu nhạy cảm…");
-    const types = {
-      EMAIL: "email",
-      PHONE: "phone",
-      CITIZEN_ID: "cccd",
-      STUDENT_ID: "student",
-      BANK_ACCOUNT: "bank",
-      CUSTOM: "custom",
-    };
-    if (
-      result?.mode !== "real_ocr" ||
-      result.width !== image.width ||
-      result.height !== image.height ||
-      !Array.isArray(result.findings) ||
-      result.findings.length > 500
-    )
-      throw new Error("Kết quả không khớp với ảnh. Hãy thử lại.");
-    const ids = new Set();
-    const findings = result.findings.map((f) => {
-      const [x, y, right, bottom] = f.bbox || [];
-      if (
-        !types[f.type] ||
-        ids.has(f.id) ||
-        typeof f.id !== "string" ||
-        !["LOW", "MEDIUM", "HIGH"].includes(f.risk) ||
-        ![x, y, right, bottom].every(Number.isFinite) ||
-        x < 0 ||
-        y < 0 ||
-        right <= x ||
-        bottom <= y ||
-        right > image.width ||
-        bottom > image.height ||
-        typeof f.preview !== "string" ||
-        typeof f.label !== "string" ||
-        !Number.isFinite(f.score) ||
-        f.score < 0 ||
-        f.score > 1 ||
-        !Number.isFinite(f.ocr_confidence) ||
-        f.ocr_confidence < 0 ||
-        f.ocr_confidence > 1
-      )
-        throw new Error("Chưa hiển thị được vùng nhận diện. Hãy thử lại.");
-      ids.add(f.id);
-      return {
-        ...f,
-        type: types[f.type],
-        risk: f.risk.toLowerCase(),
-        text: f.preview,
-        box: { x, y, width: right - x, height: bottom - y },
-      };
-    });
+    const adapted = adaptScanResult(result, image);
     onProgress(null, "Đã kiểm tra xong.");
-    return { ...result, status: "complete", source: "ocr", findings };
+    return adapted;
   } catch (error) {
     if (signal?.aborted) throw new DOMException("Đã hủy", "AbortError");
     if (timeout.signal.aborted)
@@ -166,6 +117,60 @@ export async function scanImage(
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   }
+}
+export function adaptScanResult(result, image) {
+  const types = {
+    EMAIL: "email",
+    PHONE: "phone",
+    CITIZEN_ID: "cccd",
+    STUDENT_ID: "student",
+    BANK_ACCOUNT: "bank",
+    CUSTOM: "custom",
+  };
+  if (
+    result?.mode !== "real_ocr" ||
+    result.width !== image.width ||
+    result.height !== image.height ||
+    !Array.isArray(result.findings) ||
+    result.findings.length > 500
+  )
+    throw new Error("Kết quả không khớp với ảnh. Hãy thử lại.");
+  const ids = new Set();
+  const findings = result.findings.map((f) => {
+    const [x, y, right, bottom] = f.bbox || [];
+    if (
+      !types[f.type] ||
+      ids.has(f.id) ||
+      typeof f.id !== "string" ||
+      !["LOW", "MEDIUM", "HIGH"].includes(f.risk) ||
+      ![x, y, right, bottom].every(Number.isFinite) ||
+      x < 0 ||
+      y < 0 ||
+      right <= x ||
+      bottom <= y ||
+      right > image.width ||
+      bottom > image.height ||
+      typeof f.preview !== "string" ||
+      typeof f.label !== "string" ||
+      !Number.isFinite(f.score) ||
+      f.score < 0 ||
+      f.score > 1 ||
+      !Number.isFinite(f.ocr_confidence) ||
+      f.ocr_confidence < 0 ||
+      f.ocr_confidence > 1
+    )
+      throw new Error("Chưa hiển thị được vùng nhận diện. Hãy thử lại.");
+    ids.add(f.id);
+    return {
+      ...f,
+      type: types[f.type],
+      risk: f.risk.toLowerCase(),
+      text: f.preview,
+      box: { x, y, width: right - x, height: bottom - y },
+    };
+  });
+
+  return { ...result, status: "complete", source: "ocr", findings };
 }
 export async function getBackendHealth() {
   try {

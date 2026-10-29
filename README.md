@@ -1,7 +1,9 @@
-# ScreenGuard+ · Phase 3
+# ScreenGuard+ · Phase 4
 
 PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
 Workspace ảnh tối giản, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
+Windows Companion có thể tự OCR ảnh mới trong thư mục Screenshots đã cho phép,
+gửi thông báo local và mở PWA để review, kể cả khi PWA đang đóng.
 Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
 ## Chạy trên Windows
@@ -22,6 +24,23 @@ Nếu server Phase 1 vẫn đang chạy, dừng bằng Ctrl+C ở terminal đó 
 uvicorn để nạp backend Phase 2. Nếu đã cài dependencies vào Python hiện tại, có thể
 chạy `npm start` hoặc `python -m uvicorn backend.main:app --port 8000 --reload`.
 Không cần Node, SQL, tài khoản, cloud API hoặc GPU để chạy ứng dụng.
+
+### Tự nhận diện screenshot — Windows
+
+Dừng server cũ nếu đang dùng cổng 8000, cài thêm dependencies và chạy entrypoint
+companion thay cho `npm start`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-desktop.txt
+.\.venv\Scripts\python.exe -m desktop_agent.main
+```
+
+Mở **http://127.0.0.1:8000/#/settings** → **Chọn thư mục** bằng hộp thoại Windows
+→ bật theo dõi. Chỉ hiện **Running** khi agent thực sự hoạt động. PNG/JPEG mới sẽ
+được OCR thật; có PII mới gửi thông báo số vùng. Mở thông báo để chọn vùng, che và
+tải PNG. Tắt switch để dừng theo dõi; Ctrl+C dừng cả tiến trình. Không tự capture,
+clipboard hoặc khởi động cùng Windows. Cấu hình đã cho phép được nhớ cho lần chạy
+agent thủ công sau. [Hướng dẫn và kết quả TC01–TC10](docs/WINDOWS_COMPANION.md).
 
 ### Engine và gói ngôn ngữ
 
@@ -118,7 +137,8 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
   bị tắt cưỡng bức có thể để lại tệp tạm của hệ điều hành.
 - Ảnh ≤ 10 MiB, ≤ 20 MP; kiểm tra MIME, signature, verify/decode thực tế, chuẩn hóa
   EXIF, matte trắng cho ảnh trong suốt. PNG xuất được vẽ mới, không sao chép EXIF.
-- Giới hạn 2 tác vụ OCR đồng thời, 25 giây/engine call, tối đa 20.000 token,
+- Upload giới hạn 2 tác vụ OCR đồng thời; companion thêm một worker riêng.
+  Mỗi engine call tối đa 25 giây, tối đa 20.000 token,
   100.000 ký tự OCR và 500 findings. UI hủy yêu cầu khi thay ảnh/rời trang; tác vụ
   Tesseract đã bắt đầu vẫn chịu timeout của backend.
 - Custom: tối đa 30 quy tắc, tên 60 ký tự, pattern 200 ký tự, 12 nhóm/nhánh,
@@ -128,11 +148,11 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
 - Chỉ lưu detection/settings và lựa chọn giao diện trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
   giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
 - Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
-  Service worker v5 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
+  Service worker v6 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
   Offline vẫn dùng UI/demo/đánh dấu/che/tải PNG; **OCR thật cần kết nối backend**.
-- Service worker và camera cần HTTPS hoặc localhost. Để thử trên điện thoại, dùng
-  HTTPS có chứng chỉ được thiết bị tin cậy. Nếu dùng `--host 0.0.0.0`, chỉ mở cổng
-  trong mạng tin cậy; HTTP qua IP LAN không bảo đảm hoạt động PWA/camera.
+- Service worker và camera cần HTTPS hoặc localhost. Companion cố định loopback;
+  không expose cổng qua LAN hoặc proxy. Chỉ PWA upload thông thường có thể dùng
+  HTTPS riêng trên thiết bị khác, không có quyền điều khiển companion Windows.
 
 ## Kiểm thử
 
