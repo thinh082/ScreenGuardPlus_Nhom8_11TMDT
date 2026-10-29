@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
+from desktop_agent.popup import DesktopPopup
 
 
 class WindowsNotifications:
@@ -9,6 +10,23 @@ class WindowsNotifications:
         self.base_url = base_url.rstrip("/")
         self.last_status = "not_sent"
         self._toaster = None
+        self.popup = DesktopPopup(self.base_url)
+        self.popup_enabled = True
+
+    def set_popup(self, enabled):
+        self.popup_enabled = bool(enabled)
+        if enabled: self.popup.start()
+        else: self.popup.clear()
+
+    def popup_status(self):
+        return self.popup.status()
+
+    def discard(self, key):
+        self.popup.discard(key)
+
+    def close(self):
+        self.clear()
+        self.popup.close()
 
     def _prepare(self):
         if os.name != "nt":
@@ -22,6 +40,9 @@ class WindowsNotifications:
         self._toaster = WindowsToaster(app_id)
 
     def notify(self, count: int, review_id: str) -> bool:
+        # The persistent warning is independent of toast permissions / Do Not Disturb.
+        if self.popup_enabled:
+            self.popup.show(count, review_id)
         try:
             from windows_toasts import Toast
             if self._toaster is None:
@@ -44,6 +65,7 @@ class WindowsNotifications:
             return False
 
     def clear(self):
+        self.popup.clear()
         try:
             if self._toaster:
                 self._toaster.clear_toasts()

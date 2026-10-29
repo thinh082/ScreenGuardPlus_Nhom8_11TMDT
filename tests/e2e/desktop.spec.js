@@ -85,13 +85,21 @@ test("local agent works with PWA closed; notification review reuses real OCR and
       if (request.url().endsWith("/api/scan")) browserScans++;
     });
     page.on("download", () => downloads++);
-    // Same opaque URL emitted by the Windows toast; there are no file paths/PII in it.
+    await page.goto(`${baseURL}/#/notifications`);
+    await expect(page.locator(".notification-row")).toHaveCount(1);
+    await expect(page.locator(".notification-copy h2")).toContainText("5 vùng");
+    await expect(page.locator("#notification-badge")).toHaveText("1");
+    await page.screenshot({
+      path: "test-results/notifications-inbox.png",
+      fullPage: true,
+    });
+    // Inbox opens the same opaque review URL as the native warning.
     const pendingReview = page.waitForResponse(
       (response) =>
         response.url().includes("/api/desktop/reviews/") &&
         response.request().method() === "GET",
     );
-    await page.goto(`${baseURL}/#/scanner?review=${notifications[0].id}`);
+    await page.locator(".notification-row a").click();
     const reviewed = await (await pendingReview).json();
     await expect(page.locator("#finding-title")).toHaveText("Phát hiện 5 vùng");
     expect(browserScans).toBe(0);
@@ -216,4 +224,49 @@ test("ordinary backend and expired review never claim screenshot monitoring is R
     "desktop_agent.main",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
+});
+
+test("notification bell, mobile inbox and dismiss are visible and keyboard usable", async ({
+  page,
+}) => {
+  let pending = true;
+  const id = "A".repeat(43);
+  await page.route("**/api/desktop/notifications", (route) =>
+    route.fulfill({
+      json: {
+        available: true,
+        items: pending
+          ? [{ id, count: 3, created_at: "2026-10-29T10:00:00Z" }]
+          : [],
+        last_scan: { findings: 3 },
+      },
+    }),
+  );
+  await page.route(`**/api/desktop/reviews/${id}`, (route) => {
+    pending = false;
+    return route.fulfill({ json: { deleted: true } });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(page.locator("#notification-badge")).toHaveText("1");
+  await page.locator("#notifications-button").click();
+  await expect(page.locator("h1")).toHaveText("Thông báo");
+  await expect(page.locator(".notification-row")).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "test-results/notifications-mobile.png",
+    fullPage: true,
+  });
+  const dismiss = page.locator("[data-dismiss-notification]");
+  await dismiss.focus();
+  await dismiss.press("Enter");
+  await expect(page.locator(".notification-row")).toHaveCount(0);
+  await expect(page.locator("#notification-badge")).toBeHidden();
+  await expect(page.locator(".notifications-empty h2")).toHaveText(
+    "Không có ảnh đang chờ",
+  );
 });

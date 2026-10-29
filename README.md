@@ -4,6 +4,8 @@ PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn v
 Workspace ảnh tối giản, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
 Windows Companion có thể tự OCR ảnh mới trong thư mục Screenshots đã cho phép,
 gửi thông báo local và mở PWA để review, kể cả khi PWA đang đóng.
+Khi có PII, cửa sổ cảnh báo nổi giữa màn hình và giữ đến khi đóng/mở review (hoặc
+phiên hết hạn). Nút chuông trên thanh đầu mở mục **Thông báo** với các ảnh chờ.
 Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
 ## Chạy trên Windows
@@ -41,6 +43,8 @@ Mở **http://127.0.0.1:8000/#/settings** → **Chọn thư mục** bằng hộp
 tải PNG. Tắt switch để dừng theo dõi; Ctrl+C dừng cả tiến trình. Không tự capture,
 clipboard hoặc khởi động cùng Windows. Cấu hình đã cho phép được nhớ cho lần chạy
 agent thủ công sau. [Hướng dẫn và kết quả TC01–TC10](docs/WINDOWS_COMPANION.md).
+**Cảnh báo nổi trên màn hình** mặc định bật, có thể tắt riêng trong Cài đặt. Mở
+review hoặc bỏ qua thông báo chỉ xóa phiên RAM, không xóa screenshot nguồn.
 
 ### Engine và gói ngôn ngữ
 
@@ -148,7 +152,7 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
 - Chỉ lưu detection/settings và lựa chọn giao diện trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
   giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
 - Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
-  Service worker v7 dùng bản mới từ server khi online, fallback allowlist tĩnh khi
+  Service worker v8 dùng bản mới từ server khi online, fallback allowlist tĩnh khi
   offline; không cache API, ảnh hoặc PII.
   Offline vẫn dùng UI/demo/đánh dấu/che/tải PNG; **OCR thật cần kết nối backend**.
 - Service worker và camera cần HTTPS hoặc localhost. Companion cố định loopback;

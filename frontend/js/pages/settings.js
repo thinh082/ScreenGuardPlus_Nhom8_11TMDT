@@ -30,6 +30,9 @@ export function settingsPage(main) {
     left.innerHTML = desktopSettingsView();
     left.append(groups[2]);
     right.append(groups[0], groups[1]);
+    right
+      .querySelector(".setting-row:last-child")
+      .replaceWith(left.querySelector("#agent-popup").closest(".setting-row"));
     main.querySelector(".settings-columns").remove();
     columns.append(left, right);
     main.append(columns);

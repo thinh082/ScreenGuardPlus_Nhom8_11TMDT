@@ -202,7 +202,7 @@ def test_agent_config_and_consent_persist_without_image_history(tmp_path):
     save_settings(path, value)
     saved = load_settings(path)
     assert saved.enabled and not saved.config.types.email
-    assert set(json.loads(path.read_text())) == {"folder", "enabled", "config"}
+    assert set(json.loads(path.read_text())) == {"folder", "enabled", "config", "popup_enabled"}
     path.write_text("invalid JSON")
     assert not load_settings(path).enabled
 
@@ -230,12 +230,20 @@ def test_private_endpoints_require_local_host_same_origin_cookie_and_csrf(agent)
         shutil.copyfile("sample_data/screenshots/email.png", Path(agent.settings.folder) / "new.png")
         until(lambda: bool(agent.notifications.items))
         key = agent.notifications.items[0][1]
+        assert client.get('/api/desktop/notifications').status_code == 403
+        notice=client.get('/api/desktop/notifications',headers=headers)
+        assert notice.json()['items'][0]['count']==1
+        assert 'image' not in notice.text and 'test.screenguard@example.com' not in notice.text
+        assert notice.json()['last_scan']['findings']==1
+        assert client.post('/api/desktop/popup',headers=headers,json={'enabled':False}).json()['popup_enabled'] is False
+        assert load_settings(agent.path).popup_enabled is False
         assert client.get(f"/api/desktop/reviews/{key}").status_code == 403
         review = client.get(f"/api/desktop/reviews/{key}", headers=headers)
         assert review.status_code == 200 and review.json()["result"]["findings"][0]["type"] == "EMAIL"
         assert "test.screenguard@example.com" not in review.text
         assert client.delete(f"/api/desktop/reviews/{key}", headers=headers).status_code == 200
         assert client.get(f"/api/desktop/reviews/{key}", headers=headers).status_code == 410
+        assert client.get('/api/desktop/notifications',headers=headers).json()['items']==[]
     with TestClient(create_app(), base_url="http://127.0.0.1", client=("192.0.2.20", 55000)) as remote:
         assert remote.get("/api/desktop/session", headers={"X-ScreenGuard-Client": "pwa", "Sec-Fetch-Site": "same-origin"}).status_code == 403
 

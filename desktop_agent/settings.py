@@ -11,6 +11,7 @@ from core.rules import validate_rules
 class AgentSettings(ContractModel):
     folder: str | None = None
     enabled: bool = False
+    popup_enabled: bool = True
     config: DetectionConfig = Field(default_factory=DetectionConfig)
 
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import secrets
 import threading
 import time
+from datetime import datetime, timezone
 
 from core.models import ScanResult
 
@@ -13,6 +14,7 @@ class Review:
     image: bytes
     result: ScanResult
     expires: float
+    created_at: str
 
 
 class ReviewStore:
@@ -35,7 +37,7 @@ class ReviewStore:
             while self._items and (len(self._items) >= self.max_items or sum(len(v.image) for v in self._items.values()) + len(image) > self.max_bytes):
                 self._items.popitem(last=False)
             key = secrets.token_urlsafe(32)
-            self._items[key] = Review(image, result, self.clock() + self.ttl)
+            self._items[key] = Review(image, result, self.clock() + self.ttl, datetime.now(timezone.utc).isoformat())
             return key
 
     def get(self, key: str) -> Review | None:
@@ -55,3 +57,8 @@ class ReviewStore:
         with self._lock:
             self._prune()
             return len(self._items)
+
+    def notifications(self):
+        with self._lock:
+            self._prune()
+            return [{"id":key,"count":len(value.result.findings),"created_at":value.created_at} for key,value in reversed(self._items.items())]

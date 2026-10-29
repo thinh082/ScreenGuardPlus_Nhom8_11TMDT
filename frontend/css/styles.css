@@ -264,6 +264,100 @@ summary:focus-visible {
   white-space: nowrap;
 }
 /* App frame */
+.notifications-button {
+  position: relative;
+  overflow: visible;
+}
+#notification-badge {
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--warning);
+  color: var(--panel);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+.notification-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.notification-list {
+  display: grid;
+  gap: 12px;
+}
+.notification-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+.notification-symbol {
+  color: var(--warning);
+}
+.notification-copy {
+  flex: 1;
+  min-width: 0;
+}
+.notification-copy h2 {
+  font-size: 16px;
+}
+.notification-copy p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.notifications-empty {
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+.notifications-empty > .icon {
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  margin-bottom: 16px;
+}
+.notifications-empty p {
+  color: var(--muted);
+  margin: 12px 0 20px;
+  font-size: 14px;
+}
+.notification-note {
+  margin-top: 20px;
+}
+@media (max-width: 760px) {
+  .notification-row {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 12px;
+  }
+  .notification-copy {
+    flex-basis: calc(100% - 40px);
+  }
+  .notification-row > .button {
+    flex: 1;
+  }
+  .notification-toolbar {
+    align-items: flex-start;
+    font-size: 13px;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+}
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;

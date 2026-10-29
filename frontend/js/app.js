@@ -7,6 +7,10 @@ import { configurationPage } from "./pages/configuration.js";
 import { settingsPage } from "./pages/settings.js";
 import { getTheme, toggleTheme } from "./services/theme-service.js";
 import { syncDesktopConfig } from "./services/desktop-service.js";
+import {
+  notificationsPage,
+  startNotificationBell,
+} from "./pages/notifications.js";
 
 const navigation = [
   ["/scanner", "scan", "Kiểm tra ảnh"],
@@ -34,6 +38,12 @@ document.querySelector("#app").innerHTML = `
   </div>
   <nav class="mobile-nav" aria-label="Điều hướng nhanh">${links(true)}</nav>
   <dialog id="install-dialog" class="confirm-dialog"><div class="section-title"><h2>Cài ScreenGuard+</h2><button class="icon-button" id="close-install" aria-label="Đóng">${icon("x")}</button></div><p>Chrome / Edge: chọn “Cài đặt ứng dụng” trong menu trình duyệt.</p><p>iPhone / iPad: mở Safari → Chia sẻ → Thêm vào Màn hình chính.</p><p class="small muted">Cần HTTPS hoặc localhost.</p></dialog>`;
+document
+  .querySelector(".topbar-right")
+  .insertAdjacentHTML(
+    "afterbegin",
+    `<a id="notifications-button" href="#/notifications" class="icon-button notifications-button" aria-label="Thông báo" title="Thông báo">${icon("bell")}<span id="notification-badge" hidden aria-live="polite"></span></a>`,
+  );
 
 const menu = document.querySelector("#menu-button");
 const mobileViewport = matchMedia("(max-width: 760px)");
@@ -70,7 +80,11 @@ function updateTitle() {
   const path = (location.hash.slice(1) || "/scanner").split("?")[0];
   const title =
     navigation.find((n) => n[0] === path)?.[2] ||
-    (path === "/overview" ? "Tổng quan" : "Kiểm tra ảnh");
+    (path === "/overview"
+      ? "Tổng quan"
+      : path === "/notifications"
+        ? "Thông báo"
+        : "Kiểm tra ảnh");
   document.querySelector("#breadcrumb-page").textContent = title;
   document.title = `${title} · ScreenGuard+`;
 }
@@ -93,7 +107,9 @@ registerRoute("/overview", dashboardPage);
 registerRoute("/scanner", scannerPage);
 registerRoute("/configuration", configurationPage);
 registerRoute("/settings", settingsPage);
+registerRoute("/notifications", notificationsPage);
 startRouter();
+startNotificationBell();
 // The agent retains the last synchronized config while the PWA is closed.
 const syncCompanion = () =>
   syncDesktopConfig().catch((error) => {

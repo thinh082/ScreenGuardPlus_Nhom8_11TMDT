@@ -88,6 +88,34 @@ của Windows. `--settings-file` có thể dùng để tách riêng consent/conf
 
 ## Trạng thái và lỗi
 
+### Cảnh báo nổi và mục Thông báo
+
+- Khi OCR tìm được PII, companion mở cửa sổ Tk native giữa màn hình, đặt topmost và
+  phát âm báo. Có **Xem và che ảnh**, **Đóng**, hỗ trợ Escape; không tự che/chia sẻ
+  ảnh hoặc khóa Windows. Giữ cửa sổ đến khi người dùng đóng, mở review, tắt theo dõi
+  hoặc phiên review hết hạn (tối đa 10 phút).
+- Popup có process riêng với Tk event loop trên main thread. IPC chỉ truyền số vùng,
+  ID và hạn dùng; không truyền ảnh/OCR text. Tối đa một cửa sổ; ảnh mới cập nhật
+  cửa sổ hiện tại. Các ảnh khác vẫn ở inbox. Child tự thoát khi parent dừng.
+- **Cảnh báo nổi trên màn hình** mặc định bật, lưu cùng consent. Tắt riêng popup vẫn
+  giữ toast Windows và inbox; nếu GUI không chạy được, API/UI báo trạng thái lỗi.
+- Nút chuông trên thanh đầu PWA có số ảnh chờ, mở `#/notifications`. Danh sách chỉ
+  chứa số vùng, thời điểm và nút review/bỏ qua, không có ảnh/raw PII. Không lưu
+  history vào localStorage; ảnh biến mất sau review/bỏ qua/TTL/tắt agent.
+- Trang Thông báo còn cho biết ảnh gần nhất được quét có tìm thấy PII không. Ảnh
+  không có findings không mở popup cảnh báo nhạy cảm.
+- API mới vẫn yêu cầu cookie/CSRF/loopback: `GET /api/desktop/notifications`,
+  `POST /api/desktop/popup` với `{enabled:boolean}`. Status thêm `popup_enabled`,
+  `popup.{available,visible,failed}`, `last_scan`. Metadata không chứa file path.
+
+Đã thử trên agent local cổng 8000: ảnh email giả mới trong thư mục đã cho phép →
+OCR thật → inbox 1 vùng và process Tk xác nhận cửa sổ mapped/visible, không lỗi.
+E2E kiểm tra bell/inbox/mobile/dismiss bằng bàn phím và mở review không quét lại.
+Toast Windows vẫn là kênh bổ sung; popup không phụ thuộc banner/Do Not Disturb.
+
+Tham chiếu: [Tkinter event loop](https://docs.python.org/3/library/tkinter.html#threading-model),
+[Tk topmost](https://web.tcl.tk/man/tcl9.1/TkCmd/wm.html).
+
 - Backend thường (`npm start`) vẫn phục vụ upload/manual OCR, nhưng status agent là
   **Stopped**, `available=false`; PWA không tự khởi chạy Python.
 - `notification=submitted` nghĩa là Windows đã nhận yêu cầu, không chứng minh banner

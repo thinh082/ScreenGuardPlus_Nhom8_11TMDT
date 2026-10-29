@@ -92,6 +92,22 @@ class Control(ContractModel):
     config: DetectionConfig
 
 
+class PopupPreference(ContractModel):
+    enabled: bool
+
+
+@router.post("/popup", dependencies=[Depends(authorized)])
+async def popup(request: Request):
+    value = await body(request, PopupPreference)
+    return await safe_call(companion(request).set_popup, value.enabled)
+
+
+@router.get("/notifications", dependencies=[Depends(authorized)])
+async def notifications(request: Request):
+    agent = request.app.state.desktop_agent
+    return {"available":bool(agent),"items":agent.reviews.notifications() if agent else [],"last_scan":agent.last_scan if agent else None}
+
+
 async def safe_call(function, *args):
     try:
         return await run_in_threadpool(function, *args)
@@ -130,5 +146,5 @@ async def review(key: str, request: Request):
 
 @router.delete("/reviews/{key}", dependencies=[Depends(authorized)])
 async def discard(key: str, request: Request):
-    companion(request).reviews.delete(key)
+    companion(request).discard_review(key)
     return {"deleted": True}

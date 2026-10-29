@@ -1,6 +1,7 @@
 """Companion lifecycle shared with the existing local FastAPI application."""
 from pathlib import Path
 import threading
+from datetime import datetime, timezone
 
 from core.models import DetectionConfig
 from core.rules import validate_rules
@@ -18,6 +19,7 @@ class Companion:
         self.reviews = ReviewStore()
         self.watcher = None
         self.last_error = None
+        self.last_scan = None
         self._lock = threading.RLock()
         self._picker_lock = threading.Lock()
         self._closed = threading.Event()
@@ -27,6 +29,8 @@ class Companion:
     def start(self):
         if self._janitor is not None:
             return
+        if hasattr(self.notifications, "set_popup"):
+            self.notifications.set_popup(self.settings.popup_enabled)
         self._janitor = threading.Thread(target=self._expire, daemon=True, name="screenguard-expiry")
         self._janitor.start()
         if self.settings.enabled:
@@ -49,6 +53,9 @@ class Companion:
                 "enabled": self.settings.enabled, "folder": self.settings.folder,
                 "error": self.last_error, "notification": self.notifications.last_status,
                 "pending_reviews": self.reviews.count(),
+                "popup_enabled": self.settings.popup_enabled,
+                "popup": self.notifications.popup_status() if hasattr(self.notifications,"popup_status") else {"available":False,"visible":False},
+                "last_scan": self.last_scan,
                 "scanned": self.watcher.scanned if self.watcher else 0,
                 "duplicates": self.watcher.duplicates if self.watcher else 0,
                 "rejected": self.watcher.rejected if self.watcher else 0,
@@ -79,6 +86,19 @@ class Companion:
             self.settings.config = config.model_copy(deep=True)
             self._save()
 
+    def set_popup(self, enabled):
+        with self._lock:
+            self.settings.popup_enabled = enabled
+            self._save()
+            if hasattr(self.notifications,"set_popup"):
+                self.notifications.set_popup(enabled)
+            return self.status()
+
+    def discard_review(self, key):
+        self.reviews.delete(key)
+        if hasattr(self.notifications,"discard"):
+            self.notifications.discard(key)
+
     def enable(self, enabled: bool):
         with self._lock:
             if self._closed.is_set():
@@ -105,6 +125,7 @@ class Companion:
                         if epoch != self._epoch or not self.settings.enabled or self._closed.is_set():
                             return
                         self.last_error = None
+                        self.last_scan = {"completed_at":datetime.now(timezone.utc).isoformat(),"findings":len(findings.findings)}
                         if findings.findings:
                             key = self.reviews.put(image, findings)
                             self.notifications.notify(len(findings.findings), key)
@@ -148,3 +169,5 @@ class Companion:
             self.notifications.clear()
         if self._janitor:
             self._janitor.join(timeout=2)
+        if hasattr(self.notifications,"close"):
+            self.notifications.close()
