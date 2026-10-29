@@ -18,7 +18,7 @@ test("dashboard navigation, actual configuration counts, install help, and clean
   await expect(page.locator("#install-dialog")).toBeVisible();
   await page.locator("#close-install").click();
   for (const [href, title] of [
-    ["/configuration", "Dữ liệu nhạy cảm"],
+    ["/configuration", "Quy tắc bảo vệ"],
     ["/settings", "Cài đặt"],
     ["/scanner", "Kiểm tra ảnh"],
     ["/overview", "Tổng quan"],
@@ -83,6 +83,7 @@ test("fixed demo: scan, choose, redact, before/after, PNG pixels, clear", async 
   );
   await page.locator("#select-all").click();
   await expect(page.locator("#download-image")).toBeDisabled();
+  await page.locator("#image-menu>summary").click();
   await page.locator("#clear-image").click();
   await expect(page.locator("#dropzone")).toBeVisible();
   await expect(page.locator("#finding-count")).toHaveText("0");
@@ -334,7 +335,7 @@ test("late camera and image operations are cancelled safely when leaving scanner
   await page.evaluate(() => {
     location.hash = "#/configuration";
   });
-  await expect(page.locator("h1")).toHaveText("Dữ liệu nhạy cảm");
+  await expect(page.locator("h1")).toHaveText("Quy tắc bảo vệ");
   await page.evaluate(() => window.finishCameraRequest());
   await expect
     .poll(() =>

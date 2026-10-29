@@ -9,15 +9,14 @@ import { getTheme, toggleTheme } from "./services/theme-service.js";
 
 const navigation = [
   ["/scanner", "scan", "Kiểm tra ảnh"],
-  ["/overview", "grid", "Tổng quan"],
-  ["/configuration", "sliders", "Dữ liệu nhạy cảm"],
+  ["/configuration", "sliders", "Quy tắc bảo vệ"],
   ["/settings", "settings", "Cài đặt"],
 ];
 function links(mobile = false) {
   return navigation
     .map(
       ([path, glyph, label]) =>
-        `<a href="#${path}" aria-label="${label}" data-${mobile ? "mobile-nav" : "nav"}="${path}">${icon(glyph)}<span>${mobile ? { "/scanner": "Quét ảnh", "/overview": "Tổng quan", "/configuration": "Dữ liệu", "/settings": "Cài đặt" }[path] : label}</span></a>`,
+        `<a href="#${path}" aria-label="${label}" data-${mobile ? "mobile-nav" : "nav"}="${path}">${icon(glyph)}<span>${mobile ? { "/scanner": "Kiểm tra ảnh", "/configuration": "Quy tắc bảo vệ", "/settings": "Cài đặt" }[path] : label}</span></a>`,
     )
     .join("");
 }
@@ -25,7 +24,7 @@ document.querySelector("#app").innerHTML = `
   <aside class="sidebar" id="sidebar">
     <a href="#/scanner" class="brand" aria-label="ScreenGuard+ trang chủ"><span class="brand-icon">${icon("shield")}</span><span>ScreenGuard<b>+</b></span></a>
     <nav aria-label="Điều hướng chính">${links()}</nav>
-    <div class="sidebar-bottom"><div class="privacy-note">${icon("lock")}<span>Không dùng cloud OCR<small>Nhận diện tại Python backend</small></span></div><button id="install-app" class="install-button">${icon("download")} Cài ứng dụng ${icon("plus")}</button><div class="project-label"><span class="avatar">08</span><span>Nhóm 08<small>ScreenGuard+</small></span><span class="version">v2.1</span></div></div>
+    <div class="sidebar-bottom"><button id="install-app" class="install-button">${icon("download")} Cài ứng dụng</button><a class="about-link" href="#/overview" data-nav="/overview" aria-label="Giới thiệu ScreenGuard+">${icon("info")}<span>Về ScreenGuard+</span></a></div>
   </aside>
   <button class="sidebar-backdrop" aria-label="Đóng điều hướng"></button>
   <div class="app-content">
@@ -59,6 +58,7 @@ document.querySelector(".skip-link").onclick = (event) => {
   document.querySelector("#main").focus();
 };
 function updateNetwork() {
+  document.querySelector("#network-status").hidden = navigator.onLine;
   document.querySelector("#network-status").innerHTML =
     `<span class="live-dot ${navigator.onLine ? "" : "offline"}"></span><span>${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}</span>`;
 }
@@ -67,7 +67,9 @@ window.addEventListener("offline", updateNetwork);
 updateNetwork();
 function updateTitle() {
   const path = (location.hash.slice(1) || "/scanner").split("?")[0];
-  const title = navigation.find((n) => n[0] === path)?.[2] || "Kiểm tra ảnh";
+  const title =
+    navigation.find((n) => n[0] === path)?.[2] ||
+    (path === "/overview" ? "Tổng quan" : "Kiểm tra ảnh");
   document.querySelector("#breadcrumb-page").textContent = title;
   document.title = `${title} · ScreenGuard+`;
 }

@@ -71,6 +71,10 @@ test("PWA opens scanner first; desktop fits the first screen in both saved theme
       ["/overview", "overview"],
     ]) {
       await page.locator(`[data-nav="${path}"]`).click();
+      if (path === "/overview")
+        await expect(page.locator("#dashboard-ocr")).not.toHaveText(
+          "Đang kiểm tra…",
+        );
       expect(
         await page.evaluate(() => document.documentElement.scrollHeight),
       ).toBeLessThanOrEqual(769);
@@ -101,6 +105,24 @@ test("small phone and tablet keep primary actions visible", async ({
     ).toBe(true);
     await page.screenshot({
       path: `test-results/ui-width-${viewport.width}.png`,
+      fullPage: true,
+    });
+    await page
+      .locator("#image-input")
+      .setInputFiles("sample_data/screenshots/all.png");
+    await expect(page.locator("#finding-count")).toHaveText("5");
+    await inViewport(page.locator("#redact-selected"), page);
+    await inViewport(page.locator("#preview-canvas"), page);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollHeight),
+    ).toBeLessThanOrEqual(viewport.height + 1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `test-results/phase3-loaded-${viewport.width}.png`,
       fullPage: true,
     });
   }

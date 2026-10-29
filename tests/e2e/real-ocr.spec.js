@@ -26,7 +26,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
   const result = await response.json();
   expect(result.mode).toBe("real_ocr");
   await expect(page.locator("#finding-count")).toHaveText("5");
-  await expect(page.locator(".finding-info small").first()).toContainText(
+  await expect(page.locator(".finding-details").first()).toContainText(
     "Độ tin cậy",
   );
   await expect(page.locator("#findings-list")).toContainText(

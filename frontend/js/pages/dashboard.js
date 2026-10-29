@@ -5,17 +5,13 @@ import { getBackendHealth } from "../services/scanner-service.js";
 export function dashboardPage(main) {
   const config = getDetectionConfig();
   main.innerHTML =
-    heading(
-      "",
-      "Tổng quan",
-      "Mọi thứ sẵn sàng trước khi chia sẻ.",
-      `<a class="button primary" href="#/scanner">${icon("plus")} Kiểm tra ảnh</a>`,
-    ) +
+    heading("", "Tổng quan", "") +
     `
-    <section class="overview-banner panel"><span class="overview-shield">${icon("shield")}</span><div><h2>Giữ riêng điều quan trọng.</h2><p>Chọn ảnh, kiểm tra và che thông tin cá nhân.</p></div><a class="button secondary" href="#/scanner?demo">Thử ảnh mẫu ${icon("arrow")}</a></section>
-    <div class="overview-stats"><article class="panel stat-card">${icon("cpu")}<div><span>OCR</span><h3 id="dashboard-ocr">Đang kiểm tra…</h3><small id="dashboard-languages">Python backend</small></div></article><article class="panel stat-card">${icon("scan")}<div><span>Chế độ quét</span><h3>${config.mode === "auto" ? "Tự động khi nhập ảnh" : "Thủ công"}</h3><a href="#/settings">Thay đổi ${icon("arrow")}</a></div></article></div>
-    <section class="panel overview-types"><div class="section-title"><h2>Dữ liệu đang bảo vệ</h2><a class="text-link" href="#/configuration">Chỉnh sửa ${icon("arrow")}</a></div><div class="type-chips">${DATA_TYPES.map((t) => `<span class="type-chip ${config.types[t.id] ? "enabled" : "disabled"}">${icon(t.icon)}${t.short}${config.types[t.id] ? icon("check") : ""}</span>`).join("")}</div></section>
-    <div class="quick-guide"><span><b>01</b> Chọn ảnh</span>${icon("chevron")}<span><b>02</b> Kiểm tra vùng</span>${icon("chevron")}<span><b>03</b> Che & tải xuống</span></div>`;
+    <section class="onboarding"><h2>Giữ riêng điều quan trọng.</h2><p class="subtitle">Chọn ảnh, kiểm tra các vùng nhạy cảm và che trước khi chia sẻ.</p><a class="button primary" href="#/scanner">Kiểm tra ảnh ${icon("arrow")}</a><div class="onboarding-state"><span>OCR</span><strong id="dashboard-ocr">Đang kiểm tra…</strong><small id="dashboard-languages"></small></div><div class="onboarding-types"><h3>Đang tìm trong ảnh</h3><p>${
+      DATA_TYPES.filter((t) => t.id !== "custom" && config.types[t.id])
+        .map((t) => t.short)
+        .join(" · ") || "Chưa bật loại dữ liệu mặc định"
+    }${config.types.custom && config.rules.some((r) => r.enabled) ? ` · ${config.rules.filter((r) => r.enabled).length} quy tắc riêng` : ""}</p><a class="text-link" href="#/configuration">Chỉnh quy tắc ${icon("arrow")}</a></div><ol class="onboarding-steps"><li>Chọn hoặc chụp ảnh để kiểm tra tự động.</li><li>Xem lại từng vùng, thêm hoặc bỏ chọn nếu cần.</li><li>Che thông tin, kiểm tra ảnh rồi tải xuống.</li></ol></section>`;
   let active = true;
   getBackendHealth().then((health) => {
     if (!active) return;

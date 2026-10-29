@@ -28,7 +28,7 @@ export function scannerPage(main) {
   main.innerHTML = scannerView();
   const $ = (selector) => main.querySelector(selector);
   // A loading state above the preview remains visible on compact screens.
-  $(".workspace-header").after($("#scan-progress"));
+  $(".scanner-workspace").prepend($("#scan-progress"));
   main.dataset.mobilePanel = "image";
   $(".scanner-workspace").id = "scan-image-panel";
   $(".findings-panel").id = "scan-findings-panel";
@@ -59,6 +59,11 @@ export function scannerPage(main) {
   };
   setMobilePanel("image");
   const preview = $("#preview-canvas");
+  const detailCanvas = $("#detail-canvas");
+  const detailDialog = $("#image-detail-dialog");
+  detailDialog.addEventListener("close", () => {
+    detailCanvas.width = detailCanvas.height = 1;
+  });
   function setError(message = "") {
     $("#scanner-error").textContent = message;
     $("#scan-recovery").hidden = !message || !original;
@@ -73,36 +78,40 @@ export function scannerPage(main) {
   }
   function paint(tempBox) {
     if (!original) return;
-    preview.width = original.width;
-    preview.height = original.height;
-    const ctx = preview.getContext("2d");
-    ctx.drawImage(view === "after" && redacted ? redacted : original, 0, 0);
-    if (view === "before") {
-      const scale =
-        original.width /
-        (preview.getBoundingClientRect().width || original.width);
-      for (const finding of findings) {
-        const { x, y, width, height } = finding.box;
-        const active = finding.id === activeFinding;
-        ctx.strokeStyle = active
-          ? "#0875dc"
-          : selected.has(finding.id)
-            ? "#099c83"
-            : "#d49021";
-        ctx.fillStyle = active
-          ? "rgba(8,117,220,.20)"
-          : selected.has(finding.id)
-            ? "rgba(12,190,153,.12)"
-            : "rgba(240,160,40,.08)";
-        ctx.lineWidth = (active ? 3.5 : 2) * scale;
-        ctx.fillRect(x, y, width, height);
-        ctx.strokeRect(x, y, width, height);
-      }
-      if (tempBox) {
-        ctx.strokeStyle = "#16c9ae";
-        ctx.lineWidth = 2 * scale;
-        ctx.setLineDash([6 * scale, 4 * scale]);
-        ctx.strokeRect(tempBox.x, tempBox.y, tempBox.width, tempBox.height);
+    for (const canvas of detailDialog.open
+      ? [preview, detailCanvas]
+      : [preview]) {
+      canvas.width = original.width;
+      canvas.height = original.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(view === "after" && redacted ? redacted : original, 0, 0);
+      if (view === "before") {
+        const scale =
+          original.width /
+          (canvas.getBoundingClientRect().width || original.width);
+        for (const finding of findings) {
+          const { x, y, width, height } = finding.box;
+          const active = finding.id === activeFinding;
+          ctx.strokeStyle = active
+            ? "#0875dc"
+            : selected.has(finding.id)
+              ? "#099c83"
+              : "#d49021";
+          ctx.fillStyle = active
+            ? "rgba(8,117,220,.20)"
+            : selected.has(finding.id)
+              ? "rgba(12,190,153,.12)"
+              : "rgba(240,160,40,.08)";
+          ctx.lineWidth = (active ? 3.5 : 2) * scale;
+          ctx.fillRect(x, y, width, height);
+          ctx.strokeRect(x, y, width, height);
+        }
+        if (tempBox) {
+          ctx.strokeStyle = "#16c9ae";
+          ctx.lineWidth = 2 * scale;
+          ctx.setLineDash([6 * scale, 4 * scale]);
+          ctx.strokeRect(tempBox.x, tempBox.y, tempBox.width, tempBox.height);
+        }
       }
     }
     $("#view-before").classList.toggle("active", view === "before");
@@ -118,13 +127,16 @@ export function scannerPage(main) {
   function renderFindings() {
     const focusedCheckbox = document.activeElement?.dataset.finding;
     $("#finding-count").textContent = findings.length;
+    $("#finding-title").textContent = findings.length
+      ? `Phát hiện ${findings.length} vùng`
+      : "Vùng cần kiểm tra";
     $("#mobile-finding-count").textContent = findings.length;
     $("#selection-tools").hidden = !findings.length;
     $("#findings-list").innerHTML = findings.length
       ? findings
           .map(
             (f) =>
-              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-icon">${icon({ email: "mail", phone: "phone", student: "book", cccd: "card", bank: "bank", custom: "code", manual: "image" }[f.type])}</span><span class="finding-info"><strong>${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small>${f.type === "manual" ? "Thủ công" : fixtureId ? "Mô phỏng" : `Độ tin cậy ${Math.round(f.ocr_confidence * 100)}%`}</small></span></button><span class="risk ${f.risk}">${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk]}</span>${f.type === "manual" ? `<button class="icon-button" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : ""}</div>`,
+              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
           )
           .join("")
       : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
@@ -133,6 +145,10 @@ export function scannerPage(main) {
         ? `Đã che ${selected.size} vùng. Xem lại trước khi tải.`
         : `${selected.size}/${findings.length} vùng được chọn để che.`
       : "Chọn ảnh để bắt đầu kiểm tra.";
+    $("#redact-selected").textContent = `Che ${selected.size} vùng`;
+    $("#redact-selected").hidden = !!redacted;
+    $("#download-image").hidden = !redacted;
+    $("#edit-redaction").hidden = !redacted;
     $("#redact-selected").disabled = !selected.size || busy;
     $("#download-image").disabled = !redacted || busy;
     $("#toggle-draw").disabled = busy;
@@ -164,7 +180,7 @@ export function scannerPage(main) {
     if (value) {
       $("#progress-bar").removeAttribute("value");
       $("#progress-number").textContent = "";
-      $("#progress-label").textContent = "Đang kiểm tra thông tin nhạy cảm…";
+      $("#progress-label").textContent = "Đang kiểm tra ảnh...";
     }
     renderFindings();
   }
@@ -262,6 +278,7 @@ export function scannerPage(main) {
     main.classList.add("has-image");
     setMobilePanel("image");
     $("#scan-mode").textContent = id ? "Ảnh mẫu · Mô phỏng" : "Tự động";
+    $("#scan-mode").hidden = !id;
     $("#scan-warnings").textContent = "";
     findings = [];
     selected.clear();
@@ -271,8 +288,8 @@ export function scannerPage(main) {
     $("#editor").hidden = false;
     $("#clear-image").disabled = false;
     $("#scan-progress").hidden = true;
-    $("#image-meta").textContent =
-      `${name} · ${canvas.width} × ${canvas.height} px`;
+    $("#image-meta").textContent = name;
+    $("#image-meta").title = `${canvas.width} × ${canvas.height} px`;
     $("#result-status").textContent = id
       ? "Ảnh mẫu · chưa kiểm tra"
       : "Ảnh của bạn · chưa nhận diện";
@@ -337,6 +354,9 @@ export function scannerPage(main) {
     $("#result-status").textContent = "Chưa có ảnh";
     $("#scan-warnings").textContent = "";
     $("#scan-mode").textContent = "Tự động";
+    $("#scan-mode").hidden = true;
+    detailDialog.close();
+    detailCanvas.width = detailCanvas.height = 1;
     $(".scanner-workspace").setAttribute("aria-busy", "false");
     main.dataset.scanState = "empty";
     setError();
@@ -376,7 +396,9 @@ export function scannerPage(main) {
     renderFindings();
   }
   function point(event) {
-    const rect = preview.getBoundingClientRect();
+    const rect = (
+      event.currentTarget === detailCanvas ? detailCanvas : preview
+    ).getBoundingClientRect();
     return {
       x: Math.max(
         0,
@@ -486,7 +508,27 @@ export function scannerPage(main) {
   $("#camera-input").onchange = (event) => importFile(event.target.files[0]);
   $("#demo-image").onclick = () => {
     generation++;
-    loadCanvas(createDemoCanvas(), "Tài liệu mẫu ScreenGuard+", DEMO_ID);
+    loadCanvas(createDemoCanvas(), "Ảnh mẫu ScreenGuard+");
+  };
+  $("#zoom-image").onclick = () => {
+    if (!original) return;
+    detailDialog.showModal();
+    paint();
+  };
+  $("#close-image-detail").onclick = () => detailDialog.close();
+  detailCanvas.addEventListener("click", (event) => {
+    if (busy) return;
+    const hit = hitFinding(event);
+    if (!hit) return;
+    activeFinding = hit.id;
+    selected.has(hit.id) ? selected.delete(hit.id) : selected.add(hit.id);
+    invalidateRedaction();
+    renderFindings();
+  });
+  $("#edit-redaction").onclick = () => {
+    invalidateRedaction();
+    renderFindings();
+    $("#redact-selected").focus();
   };
   $("#clear-image").onclick = clearImage;
   $("#start-scan").onclick = runScan;
@@ -578,7 +620,7 @@ export function scannerPage(main) {
       stopDrawing();
       $("#view-after").disabled = false;
       renderFindings();
-      toast(`Đã che ${selected.size} vùng. Hãy xem lại ảnh trước khi tải.`);
+      $("#download-image").focus({ preventScroll: true });
     } catch (error) {
       setError(error.message);
     }
@@ -701,6 +743,8 @@ export function scannerPage(main) {
     controller?.abort();
     stopCamera();
     if (dialog.open) dialog.close();
+    if (detailDialog.open) detailDialog.close();
+    detailCanvas.width = detailCanvas.height = 1;
     resize.disconnect();
     original = null;
     redacted = null;

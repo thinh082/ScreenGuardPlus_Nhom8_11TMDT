@@ -13,7 +13,7 @@ export function getTheme() {
 function apply(theme) {
   document.documentElement.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]').content =
-    theme === "dark" ? "#0d131d" : "#f5f7fa";
+    theme === "dark" ? "#11161f" : "#f5f6f8";
   window.dispatchEvent(new Event("themechange"));
 }
 export function toggleTheme() {

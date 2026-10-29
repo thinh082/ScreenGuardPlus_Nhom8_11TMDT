@@ -77,3 +77,61 @@ trên bộ ảnh hư cấu kèm dự án. OCR mờ hoặc sai ký tự vẫn có
 cùng một token, box có thể chứa cả label để tránh che sót. Hủy fetch bỏ kết quả cũ
 trên UI; tác vụ Tesseract đã khởi chạy vẫn chịu timeout backend, không dừng ngay.
 Không có theo dõi nền, thư mục toàn hệ thống hoặc ứng dụng khác.
+
+## Phase 3 — Minimal Privacy Workspace
+
+Kết quả cuối trên môi trường này: **61 Python + 6 JavaScript + 26 Playwright =
+93 kiểm thử đạt; 0 fail, 0 skip**. `prettier --check` và `git diff --check` đạt.
+Các bài OCR thật dùng Tesseract eng/vie; kiểm tra PNG so sánh pixel vùng che và vùng
+không được chọn. Bốn bài workspace mới cùng toàn bộ 22 bài hồi quy đều đạt.
+
+Giữ nguyên FastAPI, OCR, detector, API contract và persistence. Chỉ thay giao diện,
+luồng review và thêm cửa sổ xem ảnh kích thước gốc.
+
+- Ba mục chính: Kiểm tra ảnh, Quy tắc bảo vệ, Cài đặt. Route Tổng quan cũ vẫn chạy,
+  dưới dạng giới thiệu ngắn qua liên kết Về ScreenGuard+.
+- Workspace desktop chia ảnh/kết quả 2:1; mobile có tab và hành động cố định phía
+  dưới. Nội dung chính vừa khung 1366×768, 1920×1080 và điện thoại 320/390px.
+- Nền dark `#11161f`, surface `#191f2b`, accent `#86d8be`; nền light `#f5f6f8`,
+  surface trắng, accent `#087b65`. Chữ chính 14–16px, tiêu đề 24–28px, phụ 12–14px.
+  Màu chữ phụ được kiểm tra tương phản tối thiểu 4.5:1 trên các nền sử dụng.
+- Trạng thái quét chỉ có spinner và “Đang kiểm tra ảnh...”; không có phần trăm giả.
+  Confidence/điểm luật nằm trong details, không sửa dữ liệu trả về. OCR dưới 60%
+  có nhãn Cần kiểm tra. Test giao diện nhãn này dùng response kiểm soát; không dùng
+  nó để đánh giá độ chính xác OCR.
+- Nút ảnh mẫu nay gọi API OCR thật, nhận đủ 5 loại với cấu hình mặc định. Chỉ route
+  legacy `#/scanner?demo` dùng fixture mô phỏng, vẫn có nhãn rõ.
+- Sau khi che, primary là Tải ảnh đã che, secondary Chỉnh lại. Chỉnh lại hoặc đổi
+  checkbox vô hiệu hóa ảnh xuất cũ; không tự download. Focus chuyển đến hành động
+  tiếp theo, thông báo vùng được cập nhật cho screen reader.
+- Inspector dùng pixel/tọa độ gốc, click vùng đồng bộ checkbox; Escape đóng và trả
+  focus về nút mở. Canvas inspector được giải phóng khi đóng/rời trang.
+- Năm detector là năm dòng cấu hình; custom master riêng với số quy tắc thực tế.
+  Cài đặt dùng ba nhóm dòng, trạng thái OCR nằm trong phần chi tiết.
+
+File thay đổi:
+
+- `frontend/css/styles.css`, `frontend/js/app.js`,
+  `frontend/js/components/{icons,scanner-view}.js`: tokens, app frame, ba mục điều
+  hướng, responsive.
+- `frontend/js/pages/{scanner,configuration,dashboard,settings}.js`: workspace,
+  trạng thái export, inspector, cấu hình dòng và onboarding.
+- `frontend/js/theme-init.js`, `frontend/js/services/theme-service.js`,
+  `frontend/index.html`, `frontend/manifest.webmanifest`,
+  `frontend/service-worker.js`: đồng bộ màu PWA, cache shell v5.
+- `tests/e2e/{app,real-ocr,ui,workspace}.spec.js`: giữ kiểm thử chức năng, cập nhật
+  selector/copy theo UI mới và thêm bốn kiểm thử workspace.
+- `README.md`, tài liệu này: hướng dẫn luồng sử dụng và chứng cứ xác minh.
+
+Ảnh QA được tạo bởi Playwright, trong `test-results/` (không commit):
+
+- `phase3-workspace-{1366,1920}-{light,dark}.png`: workspace trước khi che.
+- `phase3-after-dark.png`: tải ảnh và chỉnh lại sau che.
+- `ui-desktop-{light,dark}.png`, `ui-configuration-{light,dark}.png`,
+  `ui-settings-{light,dark}.png`, `ui-overview-{light,dark}.png`: các màn hình chính.
+- `ui-mobile-preview.png`, `ui-mobile-findings.png`, `ui-mobile-dark.png`,
+  `phase3-loaded-{320,834}.png`: điện thoại/tablet và primary actions.
+- `phase3-image-detail.png`, `phase3-loading.png`: inspector và loading.
+
+Chưa triển khai thêm giám sát nền (ngoài phạm vi Phase 3). Camera trong E2E là
+camera giả lập; chưa xác minh lời mời cài PWA và camera vật lý trên điện thoại.

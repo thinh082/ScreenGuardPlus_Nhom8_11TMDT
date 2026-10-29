@@ -7,8 +7,8 @@
   "start_url": "./#/scanner",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#f5f7fa",
+  "background_color": "#f5f6f8",
+  "theme_color": "#f5f6f8",
   "icons": [
     {
       "src": "icons/icon-192.png",

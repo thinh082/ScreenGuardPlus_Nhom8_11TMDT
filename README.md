@@ -1,7 +1,7 @@
-# ScreenGuard+ · Phase 2.5
+# ScreenGuard+ · Phase 3
 
 PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
-Giao diện gọn, responsive, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
+Workspace ảnh tối giản, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
 Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
 ## Chạy trên Windows
@@ -41,15 +41,16 @@ $env:TESSERACT_CMD = 'D:\Tools\Tesseract-OCR\tesseract.exe'
 - Chọn `vie+eng`, `vie` hoặc `eng` trong Cài đặt. Nếu thiếu `vie` nhưng có `eng`,
   backend dùng `eng` và trả cảnh báo trên màn hình quét. Nếu không có ngôn ngữ
   dùng được hoặc không tìm thấy engine, báo lỗi rõ ràng và vẫn cho đánh dấu thủ công.
-- Xem trạng thái thực tế tại `/api/health`, Dashboard và Cài đặt. Cài `pytesseract`
+- Xem trạng thái thực tế tại `/api/health`, Về ScreenGuard+ và Cài đặt. Cài `pytesseract`
   bằng pip **không tự cài** Tesseract executable.
 
 ## Kiểm tra nhanh bằng ảnh thật
 
 PWA mở trực tiếp vào **Kiểm tra ảnh**. Nút mặt trăng/mặt trời trên thanh đầu đổi
 nền sáng/tối và ghi nhớ lựa chọn. Nếu chưa chọn, ứng dụng theo giao diện hệ thống.
-Trên điện thoại, chuyển giữa tab **Hình ảnh / Kết quả**; nút che và tải ảnh luôn ở
-phía dưới. Tổng quan là trang phụ; phần giải thích và cài đặt nâng cao có thể mở khi cần.
+Ba mục chính: **Kiểm tra ảnh / Quy tắc bảo vệ / Cài đặt**. Trên điện thoại, chuyển
+giữa tab **Hình ảnh / Vùng cần kiểm tra**; nút che và tải ảnh luôn ở phía dưới.
+Tổng quan cũ trở thành trang giới thiệu ngắn qua liên kết **Về ScreenGuard+**.
 
 Các ảnh trong `sample_data/screenshots/` chỉ chứa dữ liệu hư cấu.
 
@@ -59,17 +60,22 @@ Các ảnh trong `sample_data/screenshots/` chỉ chứa dữ liệu hư cấu.
 3. Tesseract đọc chữ và detector tìm Email, SĐT, MSSV, CCCD, số tài khoản. Bounding
    boxes tự xuất hiện; sidebar dùng preview đã che bớt ký tự.
 4. Nhấn kết quả để làm nổi bật vùng tương ứng; nhấn vùng trên ảnh hoặc checkbox để
-   chọn/bỏ chọn. Nhấn **Xem ảnh sau khi che**, so sánh **Ảnh gốc / Sau khi che**,
-   rồi chủ động nhấn **Tải ảnh đã che**. Không có tự che hoặc tự tải sau khi quét.
-5. Tắt Email trong **Dữ liệu nhạy cảm**, nhập lại ảnh: không trả EMAIL.
+   chọn/bỏ chọn. Nhấn **Che N vùng**, so sánh **Ảnh gốc / Sau khi che**, rồi chủ động
+   nhấn **Tải ảnh đã che**. **Chỉnh lại** hoặc đổi checkbox sẽ hủy bản che cũ; cần
+   che lại trước khi tải. Không có tự che hoặc tự tải sau khi quét.
+5. Tắt Email trong **Quy tắc bảo vệ**, nhập lại ảnh: không trả EMAIL.
 6. Thêm Regex `NV-[0-9]{6}` và Keyword `CONFIDENTIAL`, nhập ảnh `custom.png` để thử.
 7. Menu **⋯** trên ảnh có **Quét lại** và **Đánh dấu thủ công**. Nhập tọa độ nằm trong
-   **Tùy chọn nâng cao**. Nếu scan lỗi, dùng **Thử lại** hoặc **Đánh dấu thủ công**.
+   **Nâng cao**. Nút kính lúp mở ảnh ở kích thước gốc để kiểm tra vùng nhỏ.
+   Nếu scan lỗi, dùng **Thử lại** hoặc **Đánh dấu thủ công**.
    Cấu hình `manual` cũ được chuyển về auto, không còn chặn lần quét đầu tiên.
 
-Nút **Ảnh mẫu demo** của Phase 1 được giữ nguyên và ghi rõ Mock Mode. Nó không gọi
-OCR, không chạy custom rules và không được áp kết quả cho ảnh upload/camera.
-Ảnh nhập bình thường luôn đi qua API thật; không có fallback sang findings mẫu.
+Nút **Thử với ảnh mẫu** đi qua OCR thật và cấu hình hiện tại, mặc định tìm đủ 5 loại
+PII. Route cũ `#/scanner?demo` vẫn là mô phỏng Phase 1, có nhãn rõ, không gọi OCR
+hoặc chạy custom rules. Không có fallback sang findings mẫu khi API lỗi.
+
+Confidence OCR và điểm luật nằm trong phần chi tiết của từng finding. Confidence
+dưới 60% có nhãn **Cần kiểm tra**; dữ liệu nhận diện không bị thay đổi để trình bày.
 
 ## Nhận diện và giới hạn
 
@@ -122,7 +128,7 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
 - Chỉ lưu detection/settings và lựa chọn giao diện trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
   giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
 - Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
-  Service worker v2 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
+  Service worker v5 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
   Offline vẫn dùng UI/demo/đánh dấu/che/tải PNG; **OCR thật cần kết nối backend**.
 - Service worker và camera cần HTTPS hoặc localhost. Để thử trên điện thoại, dùng
   HTTPS có chứng chỉ được thiết bị tin cậy. Nếu dùng `--host 0.0.0.0`, chỉ mở cổng
