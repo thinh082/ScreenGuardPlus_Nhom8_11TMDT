@@ -8,7 +8,7 @@ test("dashboard navigation, actual configuration counts, install help, and clean
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "An tâm hơn khi chia sẻ." }),
+    page.getByRole("heading", { name: "Kiểm tra ảnh", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/dashboard-desktop.png",
@@ -19,8 +19,9 @@ test("dashboard navigation, actual configuration counts, install help, and clean
   await page.locator("#close-install").click();
   for (const [href, title] of [
     ["/configuration", "Dữ liệu nhạy cảm"],
-    ["/settings", "Cài đặt & bảo vệ"],
-    ["/scanner", "Trình quét hình ảnh"],
+    ["/settings", "Cài đặt"],
+    ["/scanner", "Kiểm tra ảnh"],
+    ["/overview", "Tổng quan"],
   ]) {
     await page.locator(`[data-nav="${href}"]`).click();
     await expect(
@@ -159,6 +160,7 @@ test("configuration persists, validates regex, escapes custom input, filters dem
   await page.locator('[data-type="email"]').uncheck();
   await page.reload();
   await expect(page.locator('[data-type="email"]')).not.toBeChecked();
+  await page.locator("#add-rule").click();
   await page
     .locator('#rule-form [name="name"]')
     .fill("<img src=x onerror=alert(1)>");
@@ -321,7 +323,7 @@ test("late camera and image operations are cancelled safely when leaving scanner
   );
   await page.locator('[data-nav="/settings"]').click();
   await page.evaluate(() => window.finishImageDecode());
-  await expect(page.locator("h1")).toHaveText("Cài đặt & bảo vệ");
+  await expect(page.locator("h1")).toHaveText("Cài đặt");
   expect(errors).toEqual([]);
 });
 
@@ -375,7 +377,7 @@ test("phone layout supports navigation and scanner without horizontal overflow",
     path: "test-results/dashboard-mobile.png",
     fullPage: true,
   });
-  for (const path of ["/scanner", "/configuration", "/settings", "/"]) {
+  for (const path of ["/scanner", "/configuration", "/settings", "/overview"]) {
     await page.locator("#menu-button").click();
     await page.locator(`[data-nav="${path}"]`).click();
     expect(

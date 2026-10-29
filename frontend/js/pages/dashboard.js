@@ -1,45 +1,31 @@
 import { icon } from "../components/icons.js";
-import { heading, notice } from "../components/ui.js";
+import { heading } from "../components/ui.js";
 import { DATA_TYPES, getDetectionConfig } from "../services/config-service.js";
 import { getBackendHealth } from "../services/scanner-service.js";
 export function dashboardPage(main) {
   const config = getDetectionConfig();
-  const enabled = DATA_TYPES.filter((t) => config.types[t.id]);
   main.innerHTML =
     heading(
-      "KHÔNG GIAN BẢO VỆ CỦA BẠN",
-      "An tâm hơn khi chia sẻ.",
-      "Kiểm tra hình ảnh. Che thông tin riêng tư. Giữ quyền kiểm soát.",
-      `<span class="badge mint">${icon("shield")} OCR tại Python backend</span>`,
+      "",
+      "Tổng quan",
+      "Mọi thứ sẵn sàng trước khi chia sẻ.",
+      `<a class="button primary" href="#/scanner">${icon("plus")} Kiểm tra ảnh</a>`,
     ) +
     `
-    <section class="hero panel">
-      <div class="hero-copy"><span class="eyebrow mint-text"><span class="live-dot"></span> QUYỀN RIÊNG TƯ BẮT ĐẦU TỪ BẠN</span>
-      <h2>Một bức ảnh.<br>Nhiều điều cần <em>bảo vệ.</em></h2>
-      <p>Đừng để thông tin cá nhân đi cùng mỗi lần chia sẻ.<br>Kiểm tra và che những chi tiết bạn muốn giữ riêng.</p>
-      <div class="actions"><a class="button primary" href="#/scanner">${icon("scan")} Kiểm tra hình ảnh ${icon("arrow")}</a><a class="button ghost" href="#/scanner?demo">Thử với ảnh mẫu</a></div>
-      <div class="hero-foot">${icon("lock")} Không dùng cloud OCR <span>·</span> Không cần tài khoản</div></div>
-      <div class="hero-art" aria-hidden="true"><div class="radar radar-one"></div><div class="radar radar-two"></div><div class="radar radar-three"></div><div class="orbit-line"></div><div class="shield-art">${icon("shield")}</div><span class="floating-tag tag-one">${icon("mail")} Email cá nhân ${icon("check")}</span><span class="floating-tag tag-two">${icon("card")} Thông tin định danh ${icon("lock")}</span><span class="art-caption"><span class="live-dot"></span> PRIVATE BY DESIGN</span></div>
-    </section>
-    <div class="status-grid">
-      <article class="panel stat-card"><span class="icon-tile mint">${icon("shield")}</span><div><p>Chế độ bảo vệ</p><h3>${config.mode === "auto" ? "Quét khi nhập ảnh" : "Quét thủ công"}</h3><span class="small muted">Bạn chủ động chọn ảnh để kiểm tra</span></div></article>
-      <article class="panel stat-card"><span class="icon-tile blue">${icon("sliders")}</span><div><p>Phạm vi phát hiện</p><h3>${enabled.length}<span class="muted stat-unit"> / 6 loại dữ liệu</span></h3><a class="small text-link" href="#/configuration">Quản lý cấu hình ${icon("arrow")}</a></div></article>
-      <article class="panel stat-card"><span class="icon-tile amber">${icon("cpu")}</span><div><p>Bộ nhận diện OCR</p><h3 id="dashboard-ocr">Đang kiểm tra…</h3><span id="dashboard-languages" class="small muted">Tesseract tại Python backend</span></div></article>
-    </div>
-    <div class="dashboard-bottom"><section class="panel data-panel"><div class="section-title"><div><p class="eyebrow">PHẠM VI BẢO VỆ</p><h2>Những thông tin cần giữ riêng</h2></div><a class="icon-button" href="#/configuration" aria-label="Cấu hình loại dữ liệu">${icon("arrow")}</a></div><div class="data-type-grid">${DATA_TYPES.map((t) => `<a href="#/configuration" class="data-type ${config.types[t.id] ? "" : "inactive"}"><span class="type-icon">${icon(t.icon)}</span><span>${t.short}</span><span class="type-state">${config.types[t.id] ? icon("check") : "Tắt"}</span></a>`).join("")}</div><p class="small muted panel-note">${icon("info")} Bạn có thể bật, tắt và thêm quy tắc theo nhu cầu.</p></section>
-    <section class="panel steps-panel"><div class="section-title"><div><p class="eyebrow">BẮT ĐẦU THẬT ĐƠN GIẢN</p><h2>3 bước trước khi chia sẻ</h2></div>${icon("book")}</div><ol class="steps"><li><span>01</span><div><h3>Chọn hình ảnh</h3><p>Tải ảnh lên hoặc chụp bằng camera.</p></div></li><li><span>02</span><div><h3>Kiểm tra & chọn vùng</h3><p>Xem ảnh mẫu hoặc tự đánh dấu vùng riêng tư.</p></div></li><li><span>03</span><div><h3>Che & tải ảnh an toàn hơn</h3><p>Xem lại kết quả và tải xuống dưới dạng PNG.</p></div></li></ol></section></div>
-    ${notice("Phase 2 · OCR ảnh nhập chạy tại Python backend của ứng dụng. Ảnh mẫu demo vẫn dùng kết quả mô phỏng. Luôn kiểm tra lại toàn bộ ảnh trước khi chia sẻ.")}
-    <footer class="page-footer"><span>Được xây dựng với sự tôn trọng quyền riêng tư.</span><span>SCREENGUARD+ <span class="muted">/</span> NHÓM 08</span></footer>`;
+    <section class="overview-banner panel"><span class="overview-shield">${icon("shield")}</span><div><h2>Giữ riêng điều quan trọng.</h2><p>Chọn ảnh, kiểm tra và che thông tin cá nhân.</p></div><a class="button secondary" href="#/scanner?demo">Thử ảnh mẫu ${icon("arrow")}</a></section>
+    <div class="overview-stats"><article class="panel stat-card">${icon("cpu")}<div><span>OCR</span><h3 id="dashboard-ocr">Đang kiểm tra…</h3><small id="dashboard-languages">Python backend</small></div></article><article class="panel stat-card">${icon("scan")}<div><span>Chế độ quét</span><h3>${config.mode === "auto" ? "Tự động khi nhập ảnh" : "Thủ công"}</h3><a href="#/settings">Thay đổi ${icon("arrow")}</a></div></article></div>
+    <section class="panel overview-types"><div class="section-title"><h2>Dữ liệu đang bảo vệ</h2><a class="text-link" href="#/configuration">Chỉnh sửa ${icon("arrow")}</a></div><div class="type-chips">${DATA_TYPES.map((t) => `<span class="type-chip ${config.types[t.id] ? "enabled" : "disabled"}">${icon(t.icon)}${t.short}${config.types[t.id] ? icon("check") : ""}</span>`).join("")}</div></section>
+    <div class="quick-guide"><span><b>01</b> Chọn ảnh</span>${icon("chevron")}<span><b>02</b> Kiểm tra vùng</span>${icon("chevron")}<span><b>03</b> Che & tải xuống</span></div>`;
   let active = true;
   getBackendHealth().then((health) => {
     if (!active) return;
     main.querySelector("#dashboard-ocr").textContent = health.ocr_available
-      ? "Tesseract sẵn sàng"
-      : "OCR chưa khả dụng";
+      ? "Sẵn sàng"
+      : "Chưa kết nối";
     main.querySelector("#dashboard-languages").textContent =
       health.backend_available
-        ? `Ngôn ngữ: ${(health.languages || []).join(", ") || "chưa có"}`
-        : "Không kết nối được backend";
+        ? `Tesseract · ${(health.languages || []).join(" / ") || "chưa có ngôn ngữ"}`
+        : "Kiểm tra Python backend";
   });
   return () => {
     active = false;

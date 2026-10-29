@@ -41,3 +41,11 @@ máy này có đủ eng/vie và không có bài bị skip.
 Kiểm thử không chứng minh OCR/PII có độ chính xác tuyệt đối trên mọi ảnh. Camera
 thật và lời mời cài PWA tùy thiết bị; camera trong E2E dùng thiết bị giả của Chromium.
 E2E dùng cổng riêng 8012 để tránh chạy nhầm backend Phase 1 còn mở ở cổng 8000.
+
+## Bổ sung giao diện gọn và sáng/tối
+
+Thêm 3 bài UI: vào trình quét ngay khi mở PWA; đổi sáng/tối, lưu qua reload và đổi
+trang; các thao tác chính nằm trong khung nhìn ở desktop/điện thoại; tab ảnh/kết quả
+và nút xuất cố định; không tràn ngang trên điện thoại nhỏ/tablet. Tổng bộ E2E hiện có
+18 bài, gồm cả các bài OCR/PNG/camera/offline trước đó. Ảnh QA sáng/tối của các màn
+hình được tạo trong `test-results/ui-*.png` và không commit.

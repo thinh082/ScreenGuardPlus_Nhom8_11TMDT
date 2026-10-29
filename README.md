@@ -1,7 +1,7 @@
 # ScreenGuard+ · Phase 2
 
 PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
-Giữ nguyên giao diện dark navy, responsive và toàn bộ thao tác thủ công của Phase 1.
+Giao diện gọn, responsive, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
 Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
 ## Chạy trên Windows
@@ -45,6 +45,11 @@ $env:TESSERACT_CMD = 'D:\Tools\Tesseract-OCR\tesseract.exe'
   bằng pip **không tự cài** Tesseract executable.
 
 ## Kiểm tra nhanh bằng ảnh thật
+
+PWA mở trực tiếp vào **Kiểm tra ảnh**. Nút mặt trăng/mặt trời trên thanh đầu đổi
+nền sáng/tối và ghi nhớ lựa chọn. Nếu chưa chọn, ứng dụng theo giao diện hệ thống.
+Trên điện thoại, chuyển giữa tab **Hình ảnh / Kết quả**; nút che và tải ảnh luôn ở
+phía dưới. Tổng quan là trang phụ; phần giải thích và cài đặt nâng cao có thể mở khi cần.
 
 Các ảnh trong `sample_data/screenshots/` chỉ chứa dữ liệu hư cấu.
 
@@ -108,7 +113,7 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
   20 toán tử lặp, bound ≤ 1000. Không lookaround/backreference/recursion/inline flags.
   Engine `regex` có timeout 50 ms/rule và ngân sách tổng 500 ms. Lỗi rule được báo
   rõ, không dùng `eval`, không thực thi regex tùy ý đồng bộ trên frontend.
-- Chỉ lưu detection/settings trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
+- Chỉ lưu detection/settings và lựa chọn giao diện trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
   giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
 - Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
   Service worker v2 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.

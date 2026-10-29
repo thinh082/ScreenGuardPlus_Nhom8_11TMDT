@@ -4,11 +4,11 @@
   "short_name": "ScreenGuard+",
   "description": "OCR tại Python backend, kiểm tra và che thông tin cá nhân trước khi chia sẻ hình ảnh.",
   "lang": "vi",
-  "start_url": "./#/",
+  "start_url": "./#/scanner",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0c121c",
-  "theme_color": "#0b121d",
+  "background_color": "#f5f7fa",
+  "theme_color": "#f5f7fa",
   "icons": [
     {
       "src": "icons/icon-192.png",

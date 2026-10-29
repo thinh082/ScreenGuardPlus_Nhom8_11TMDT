@@ -111,6 +111,7 @@ test("TC08 TC09 toggles and custom Keyword/Regex affect real imported images", a
     { name: "Staff code", kind: "regex", pattern: "NV-[0-9]{6}" },
     { name: "Secret", kind: "keyword", pattern: "CONFIDENTIAL" },
   ]) {
+    await page.locator("#add-rule").click();
     await page.locator('#rule-form [name="name"]').fill(rule.name);
     await page.locator('#rule-form [name="kind"]').selectOption(rule.kind);
     await page.locator('#rule-form [name="pattern"]').fill(rule.pattern);

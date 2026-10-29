@@ -25,25 +25,55 @@ export function scannerPage(main) {
     cameraGeneration = 0;
   main.innerHTML =
     heading(
-      "KIỂM TRA TRƯỚC KHI CHIA SẺ",
-      "Trình quét hình ảnh",
-      "Chọn ảnh của bạn hoặc khám phá quy trình với tài liệu mẫu.",
-      `<span id="scan-mode" class="badge amber">${icon("cpu")} OCR · Python backend</span>`,
+      "",
+      "Kiểm tra ảnh",
+      "Giữ riêng thông tin trước khi chia sẻ.",
+      `<span id="scan-mode" class="badge mint">${icon("shield")} OCR thật</span>`,
     ) +
     `
-    ${notice("Ảnh của bạn được gửi đến Python backend của ứng dụng để chạy Tesseract, không gửi đến dịch vụ OCR bên thứ ba. Kết quả có thể bỏ sót thông tin; hãy kiểm tra lại trước khi chia sẻ.")}
-    <div class="scanner-layout"><section class="panel scanner-workspace"><div class="workspace-header"><h2>${icon("image")} Không gian làm việc</h2><button id="clear-image" class="button subtle small-button" disabled>${icon("trash")} Xóa ảnh</button></div>
-      <div id="dropzone" class="dropzone"><div class="upload-art">${icon("upload")}</div><h2>Một bước nhỏ, riêng tư hơn.</h2><p>Kéo thả hình ảnh vào đây<br>hoặc chọn ảnh từ thiết bị của bạn.</p><button class="button primary" id="choose-image">${icon("plus")} Chọn hình ảnh</button><span class="small muted">PNG, JPG, WebP · Tối đa 10 MB / 20 MP</span><div class="dropzone-separator"><span>hoặc bắt đầu với</span></div><div class="actions"><button class="button secondary" id="demo-image">${icon("image")} Ảnh mẫu demo</button><button class="button secondary" id="open-camera">${icon("camera")} Camera</button></div></div>
+    ${notice("Ảnh được xử lý tại máy chủ ứng dụng. Luôn kiểm tra lại trước khi chia sẻ.")}
+    <div class="mobile-scan-tabs" role="tablist" aria-label="Không gian kiểm tra"><button id="mobile-image-tab" role="tab" aria-selected="true" aria-controls="scan-image-panel" class="active">${icon("image")} Hình ảnh</button><button id="mobile-findings-tab" role="tab" aria-selected="false" aria-controls="scan-findings-panel">${icon("scan")} Kết quả <span id="mobile-finding-count" class="count">0</span></button></div>
+    <div class="scanner-layout"><section class="panel scanner-workspace"><div class="workspace-header"><h2>${icon("image")} Ảnh của bạn</h2><button id="clear-image" class="button subtle small-button" disabled>${icon("trash")} Xóa ảnh</button></div>
+      <div id="dropzone" class="dropzone"><div class="upload-art">${icon("upload")}</div><h2>Thêm ảnh để kiểm tra</h2><p>Kéo thả hoặc chọn từ thiết bị.</p><button class="button primary" id="choose-image">${icon("plus")} Chọn ảnh</button><span class="small muted">PNG, JPG, WebP · Tối đa 10 MB / 20 MP</span><div class="actions"><button class="button secondary" id="demo-image">${icon("image")} Thử ảnh mẫu</button><button class="button secondary" id="open-camera">${icon("camera")} Chụp ảnh</button></div></div>
       <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
       <input id="camera-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
       <div id="editor" hidden><div class="editor-toolbar"><div class="segmented"><button id="view-before" class="active" aria-pressed="true">Ảnh gốc</button><button id="view-after" disabled aria-pressed="false">Sau khi che</button></div><button class="button secondary small-button" id="replace-image">${icon("upload")} Đổi ảnh</button></div><div class="canvas-stage"><canvas id="preview-canvas" aria-label="Ảnh xem trước. Bật đánh dấu và kéo để chọn vùng; hoặc nhập tọa độ bên dưới."></canvas></div><div class="canvas-meta"><span id="image-meta"></span><span id="view-label">Ảnh gốc</span></div><div class="manual-tools"><button id="toggle-draw" class="button secondary small-button" aria-pressed="false">${icon("plus")} Đánh dấu vùng</button><button id="start-scan" class="button secondary small-button">${icon("scan")} Kiểm tra ảnh</button><span class="small muted" id="draw-hint">Chọn vùng riêng tư để che.</span></div>
       <details class="coordinates"><summary>Đánh dấu bằng tọa độ (pixel)</summary><form id="coordinate-form"><label>X<input name="x" type="number" min="0" required value="0"></label><label>Y<input name="y" type="number" min="0" required value="0"></label><label>Rộng<input name="width" type="number" min="1" required></label><label>Cao<input name="height" type="number" min="1" required></label><button type="submit" class="button secondary small-button">Thêm vùng</button></form></details></div>
       <div id="scan-progress" class="scan-progress" role="status" hidden><div class="row-between"><span id="progress-label">Đang chuẩn bị…</span><span id="progress-number"></span></div><progress id="progress-bar" max="100" aria-label="Tiến trình kiểm tra"></progress></div><p id="scanner-error" class="error-text" role="alert"></p><p id="scan-warnings" class="small muted" role="status"></p>
-      <div class="workspace-footer">${icon("lock")} OCR tại Python backend · ảnh và kết quả không được cache.</div></section>
-      <aside class="panel findings-panel"><div class="section-title"><h2>Vùng cần kiểm tra <span id="finding-count" class="count">0</span></h2>${icon("scan")}</div><div id="result-status" class="result-status">Chưa có ảnh</div><div id="selection-tools" class="selection-tools" hidden><button id="select-all" class="text-button">Chọn tất cả</button><button id="deselect-all" class="text-button">Bỏ chọn</button></div><div id="findings-list" class="findings-list"></div><div class="redaction-actions"><p id="selection-summary" class="small muted">Chọn ảnh để bắt đầu kiểm tra.</p><button id="redact-selected" class="button primary full-width" disabled>${icon("eyeOff")} Che vùng đã chọn</button><button id="download-image" class="button secondary full-width" disabled>${icon("download")} Tải ảnh PNG</button></div><p class="small muted findings-warning">${icon("info")} Kết quả tự động có thể bỏ sót thông tin. Luôn kiểm tra toàn bộ ảnh trước khi chia sẻ.</p></aside></div>
-    <div class="scanner-tip">${icon("shield")} <span><strong>Quyền kiểm soát thuộc về bạn.</strong> Chỉ ảnh bạn chủ động chọn mới được mở trong ứng dụng.</span></div>
+      <div class="workspace-footer">${icon("lock")} Không lưu ảnh hoặc kết quả vào bộ nhớ đệm.</div></section>
+      <aside class="panel findings-panel"><div class="section-title"><h2>Kết quả <span id="finding-count" class="count">0</span></h2>${icon("scan")}</div><div id="result-status" class="result-status">Chưa có ảnh</div><div id="selection-tools" class="selection-tools" hidden><button id="select-all" class="text-button">Chọn tất cả</button><button id="deselect-all" class="text-button">Bỏ chọn</button></div><div id="findings-list" class="findings-list"></div><div class="redaction-actions"><p id="selection-summary" class="small muted">Chọn ảnh để bắt đầu kiểm tra.</p><button id="redact-selected" class="button primary full-width" disabled>${icon("eyeOff")} Che vùng đã chọn</button><button id="download-image" class="button secondary full-width" disabled>${icon("download")} Tải ảnh PNG</button></div><p class="small muted findings-warning">${icon("info")} Tự động có thể bỏ sót. Hãy kiểm tra lại ảnh.</p></aside></div>
+    <div class="scanner-tip">${icon("shield")} <span><strong>Bạn chủ động chọn ảnh.</strong> Không theo dõi thư viện ảnh.</span></div>
     <dialog id="camera-dialog" class="camera-dialog"><div class="section-title"><h2>Chụp ảnh để kiểm tra</h2><button id="close-camera" class="icon-button" aria-label="Đóng camera">${icon("x")}</button></div><video id="camera-video" autoplay playsinline muted></video><p id="camera-error" role="alert" class="error-text"></p><div class="actions"><button id="capture-photo" class="button primary" disabled>${icon("camera")} Chụp ảnh</button><button id="native-camera" class="button secondary">Dùng camera thiết bị</button></div><p class="small muted">Camera chỉ hoạt động khi cửa sổ này đang mở.</p></dialog>`;
   const $ = (selector) => main.querySelector(selector);
+  main.dataset.mobilePanel = "image";
+  $(".scanner-workspace").id = "scan-image-panel";
+  $(".findings-panel").id = "scan-findings-panel";
+  function setMobilePanel(panel) {
+    main.dataset.mobilePanel = panel;
+    for (const name of ["image", "findings"]) {
+      const button = $(`#mobile-${name}-tab`);
+      button.classList.toggle("active", panel === name);
+      button.setAttribute("aria-selected", String(panel === name));
+      button.tabIndex = panel === name ? 0 : -1;
+    }
+  }
+  $("#mobile-image-tab").onclick = () => setMobilePanel("image");
+  $("#mobile-findings-tab").onclick = () => setMobilePanel("findings");
+  $(".mobile-scan-tabs").onkeydown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const panel =
+      event.key === "Home"
+        ? "image"
+        : event.key === "End"
+          ? "findings"
+          : main.dataset.mobilePanel === "image"
+            ? "findings"
+            : "image";
+    setMobilePanel(panel);
+    $(`#mobile-${panel}-tab`).focus();
+  };
+  setMobilePanel("image");
   const preview = $("#preview-canvas");
   function setError(message = "") {
     $("#scanner-error").textContent = message;
@@ -91,15 +121,16 @@ export function scannerPage(main) {
   }
   function renderFindings() {
     $("#finding-count").textContent = findings.length;
+    $("#mobile-finding-count").textContent = findings.length;
     $("#selection-tools").hidden = !findings.length;
     $("#findings-list").innerHTML = findings.length
       ? findings
           .map(
             (f) =>
-              `<div class="finding-row"><label><input type="checkbox" data-finding="${escapeHTML(f.id)}" ${selected.has(f.id) ? "checked" : ""}><span class="finding-info"><strong>${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small>${f.type === "manual" ? "Đánh dấu thủ công" : fixtureId ? "Dữ liệu mẫu cố định" : `OCR: ${Math.round(f.ocr_confidence * 100)}% · Điểm luật: ${f.score.toFixed(2)}`}</small></span></label><span class="risk ${f.risk}">${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk]}</span>${f.type === "manual" ? `<button class="icon-button" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : ""}</div>`,
+              `<div class="finding-row"><label><input type="checkbox" data-finding="${escapeHTML(f.id)}" ${selected.has(f.id) ? "checked" : ""}><span class="finding-info"><strong>${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small>${f.type === "manual" ? "Đánh dấu thủ công" : fixtureId ? "Mô phỏng" : `OCR: ${Math.round(f.ocr_confidence * 100)}% · Điểm: ${f.score.toFixed(2)}`}</small></span></label><span class="risk ${f.risk}">${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk]}</span>${f.type === "manual" ? `<button class="icon-button" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : ""}</div>`,
           )
           .join("")
-      : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Bạn có thể kéo để đánh dấu hoặc nhập tọa độ vùng cần che." : "Kết quả sẽ xuất hiện tại đây sau khi bạn chọn ảnh."}</p></div>`;
+      : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
     $("#selection-summary").textContent = original
       ? `${selected.size}/${findings.length} vùng được chọn để che.`
       : "Chọn ảnh để bắt đầu kiểm tra.";
@@ -163,14 +194,7 @@ export function scannerPage(main) {
           : result.findings.length
             ? `OCR hoàn tất · ${result.findings.length} vùng tự động · ${result.language}`
             : result.message;
-      $("#scan-warnings").textContent = [
-        ...(result.warnings || []),
-        ...(fixtureId
-          ? []
-          : [
-              "Điểm luật là đánh giá heuristic, không phải xác suất chính xác tuyệt đối.",
-            ]),
-      ].join(" ");
+      $("#scan-warnings").textContent = (result.warnings || []).join(" ");
     } catch (error) {
       if (
         error.name !== "AbortError" &&
@@ -197,9 +221,9 @@ export function scannerPage(main) {
     busy = false;
     original = canvas;
     fixtureId = id;
-    $("#scan-mode").textContent = id
-      ? "Mock Mode · Ảnh mẫu cố định"
-      : "Real OCR · Python backend";
+    main.classList.add("has-image");
+    setMobilePanel("image");
+    $("#scan-mode").textContent = id ? "Ảnh mẫu · Mô phỏng" : "OCR thật";
     $("#scan-warnings").textContent = "";
     findings = [];
     selected.clear();
@@ -239,6 +263,8 @@ export function scannerPage(main) {
     }
   }
   function clearImage() {
+    main.classList.remove("has-image");
+    setMobilePanel("image");
     generation++;
     controller?.abort();
     original = null;
@@ -256,7 +282,7 @@ export function scannerPage(main) {
     $("#clear-image").disabled = true;
     $("#result-status").textContent = "Chưa có ảnh";
     $("#scan-warnings").textContent = "";
-    $("#scan-mode").textContent = "OCR · Python backend";
+    $("#scan-mode").textContent = "OCR thật";
     setError();
     renderFindings();
     toast("Đã xóa ảnh và kết quả khỏi phiên quét.");

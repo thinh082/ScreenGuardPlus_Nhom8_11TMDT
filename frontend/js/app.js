@@ -5,17 +5,38 @@ import { dashboardPage } from "./pages/dashboard.js";
 import { scannerPage } from "./pages/scanner.js";
 import { configurationPage } from "./pages/configuration.js";
 import { settingsPage } from "./pages/settings.js";
+import { getTheme, toggleTheme } from "./services/theme-service.js";
 
 const navigation = [
-  ["/", "grid", "Tổng quan"],
-  ["/scanner", "scan", "Kiểm tra hình ảnh"],
+  ["/scanner", "scan", "Kiểm tra ảnh"],
+  ["/overview", "grid", "Tổng quan"],
   ["/configuration", "sliders", "Dữ liệu nhạy cảm"],
-  ["/settings", "settings", "Cài đặt & bảo vệ"],
+  ["/settings", "settings", "Cài đặt"],
 ];
-document.querySelector("#app").innerHTML =
-  `<aside class="sidebar" id="sidebar"><a href="#/" class="brand" aria-label="ScreenGuard+ trang chủ"><span class="brand-icon">${icon("shield")}</span><span>ScreenGuard<span class="mint-text">+</span><small>SHARE WITH CONFIDENCE</small></span></a><span class="nav-label">KHÔNG GIAN LÀM VIỆC</span><nav aria-label="Điều hướng chính">${navigation.map(([path, glyph, label]) => `<a href="#${path}" data-nav="${path}">${icon(glyph)}<span>${label}</span>${icon("chevron", "nav-chevron")}</a>`).join("")}</nav><div class="sidebar-bottom"><div class="local-card"><span class="icon-tile mint small-tile">${icon("lock")}</span><strong>Riêng tư từ thiết kế</strong><p>OCR tại Python backend.<br>Không dùng cloud OCR.</p><span class="local-label"><span class="live-dot"></span> LOCAL OCR ENGINE</span></div><button id="install-app" class="install-button">${icon("download")} Cài đặt ứng dụng ${icon("plus")}</button><div class="project-label"><span class="avatar">08</span><span>Nhóm 08<small>Dự án ScreenGuard+</small></span><span class="version">v2.0</span></div></div></aside><button class="sidebar-backdrop" aria-label="Đóng điều hướng"></button><div class="app-content"><header class="topbar"><div class="topbar-left"><button id="menu-button" class="icon-button mobile-menu" aria-label="Mở điều hướng" aria-controls="sidebar" aria-expanded="false">${icon("menu")}</button><span class="breadcrumb">Không gian làm việc <span>/</span> <strong id="breadcrumb-page">Tổng quan</strong></span></div><div class="topbar-right"><span id="network-status" class="connection"><span class="live-dot"></span> Trực tuyến</span><span class="topbar-divider"></span><span class="badge subtle-badge">BẢN THỬ NGHIỆM</span><span class="topbar-shield">${icon("shield")}</span></div></header><main id="main" tabindex="-1"></main></div><dialog id="install-dialog" class="confirm-dialog"><div class="section-title"><h2>Cài đặt ScreenGuard+</h2><button class="icon-button" id="close-install" aria-label="Đóng">${icon("x")}</button></div><p id="install-instructions">Trên Chrome hoặc Edge, mở menu trình duyệt và chọn “Cài đặt ứng dụng”. Trên iPhone/iPad, mở bằng Safari, nhấn Chia sẻ → Thêm vào Màn hình chính.</p><p class="small muted">Cần truy cập qua HTTPS hoặc localhost. Bạn cũng có thể tiếp tục sử dụng ngay trên trình duyệt.</p></dialog>`;
+function links(mobile = false) {
+  return navigation
+    .map(
+      ([path, glyph, label]) =>
+        `<a href="#${path}" aria-label="${label}" data-${mobile ? "mobile-nav" : "nav"}="${path}">${icon(glyph)}<span>${mobile ? { "/scanner": "Quét ảnh", "/overview": "Tổng quan", "/configuration": "Dữ liệu", "/settings": "Cài đặt" }[path] : label}</span></a>`,
+    )
+    .join("");
+}
+document.querySelector("#app").innerHTML = `
+  <aside class="sidebar" id="sidebar">
+    <a href="#/scanner" class="brand" aria-label="ScreenGuard+ trang chủ"><span class="brand-icon">${icon("shield")}</span><span>ScreenGuard<b>+</b></span></a>
+    <nav aria-label="Điều hướng chính">${links()}</nav>
+    <div class="sidebar-bottom"><div class="privacy-note">${icon("lock")}<span>Không dùng cloud OCR<small>Nhận diện tại Python backend</small></span></div><button id="install-app" class="install-button">${icon("download")} Cài ứng dụng ${icon("plus")}</button><div class="project-label"><span class="avatar">08</span><span>Nhóm 08<small>ScreenGuard+</small></span><span class="version">v2.1</span></div></div>
+  </aside>
+  <button class="sidebar-backdrop" aria-label="Đóng điều hướng"></button>
+  <div class="app-content">
+    <header class="topbar"><div class="topbar-left"><button id="menu-button" class="icon-button mobile-menu" aria-label="Mở điều hướng" aria-controls="sidebar" aria-expanded="false">${icon("menu")}</button><span class="mobile-brand">ScreenGuard<span>+</span></span><span class="breadcrumb" id="breadcrumb-page">Kiểm tra ảnh</span></div><div class="topbar-right"><span id="network-status" class="connection"></span><button id="theme-toggle" class="theme-toggle" aria-label="Chuyển giao diện"></button></div></header>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <nav class="mobile-nav" aria-label="Điều hướng nhanh">${links(true)}</nav>
+  <dialog id="install-dialog" class="confirm-dialog"><div class="section-title"><h2>Cài ScreenGuard+</h2><button class="icon-button" id="close-install" aria-label="Đóng">${icon("x")}</button></div><p>Chrome / Edge: chọn “Cài đặt ứng dụng” trong menu trình duyệt.</p><p>iPhone / iPad: mở Safari → Chia sẻ → Thêm vào Màn hình chính.</p><p class="small muted">Cần HTTPS hoặc localhost.</p></dialog>`;
+
 const menu = document.querySelector("#menu-button");
-const mobileViewport = window.matchMedia("(max-width: 720px)");
+const mobileViewport = matchMedia("(max-width: 760px)");
 function syncSidebar() {
   document.querySelector("#sidebar").inert =
     mobileViewport.matches && !document.body.classList.contains("menu-open");
@@ -33,27 +54,39 @@ document.querySelector(".sidebar-backdrop").onclick = () => {
 mobileViewport.addEventListener("change", syncSidebar);
 window.addEventListener("hashchange", () => queueMicrotask(syncSidebar));
 syncSidebar();
-document.querySelector(".skip-link").addEventListener("click", (event) => {
+document.querySelector(".skip-link").onclick = (event) => {
   event.preventDefault();
   document.querySelector("#main").focus();
-  document.querySelector("#main").scrollIntoView();
-});
-const updateNetwork = () => {
-  const el = document.querySelector("#network-status");
-  el.innerHTML = `<span class="live-dot ${navigator.onLine ? "" : "offline"}"></span> ${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}`;
 };
+function updateNetwork() {
+  document.querySelector("#network-status").innerHTML =
+    `<span class="live-dot ${navigator.onLine ? "" : "offline"}"></span><span>${navigator.onLine ? "Trực tuyến" : "Ngoại tuyến"}</span>`;
+}
 window.addEventListener("online", updateNetwork);
 window.addEventListener("offline", updateNetwork);
 updateNetwork();
 function updateTitle() {
-  const path = (location.hash.slice(1) || "/").split("?")[0];
-  const title = navigation.find((n) => n[0] === path)?.[2] || "Tổng quan";
+  const path = (location.hash.slice(1) || "/scanner").split("?")[0];
+  const title = navigation.find((n) => n[0] === path)?.[2] || "Kiểm tra ảnh";
   document.querySelector("#breadcrumb-page").textContent = title;
   document.title = `${title} · ScreenGuard+`;
 }
 window.addEventListener("hashchange", updateTitle);
 updateTitle();
-registerRoute("/", dashboardPage);
+function renderTheme() {
+  const dark = getTheme() === "dark";
+  const button = document.querySelector("#theme-toggle");
+  button.innerHTML = `${icon(dark ? "sun" : "moon")}<span>${dark ? "Sáng" : "Tối"}</span>`;
+  button.setAttribute(
+    "aria-label",
+    `Chuyển sang giao diện ${dark ? "sáng" : "tối"}`,
+  );
+  button.setAttribute("aria-pressed", String(dark));
+}
+document.querySelector("#theme-toggle").onclick = toggleTheme;
+window.addEventListener("themechange", renderTheme);
+renderTheme();
+registerRoute("/overview", dashboardPage);
 registerRoute("/scanner", scannerPage);
 registerRoute("/configuration", configurationPage);
 registerRoute("/settings", settingsPage);
@@ -66,8 +99,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 });
 window.addEventListener("appinstalled", () => {
   deferredPrompt = null;
-  toast("Đã cài đặt ScreenGuard+.");
-  document.querySelector("#install-app").textContent = "Đã cài đặt ứng dụng";
+  toast("Đã cài ScreenGuard+.");
 });
 document.querySelector("#install-app").onclick = async () => {
   if (deferredPrompt) {
@@ -79,13 +111,7 @@ document.querySelector("#install-app").onclick = async () => {
 };
 document.querySelector("#close-install").onclick = () =>
   document.querySelector("#install-dialog").close();
-if ("serviceWorker" in navigator && window.isSecureContext) {
+if ("serviceWorker" in navigator && isSecureContext)
   navigator.serviceWorker
     .register("./service-worker.js")
-    .catch(() =>
-      toast(
-        "Chưa bật được chế độ ngoại tuyến. Bạn vẫn có thể dùng ứng dụng trực tuyến.",
-        true,
-      ),
-    );
-}
+    .catch(() => toast("Chưa bật được chế độ ngoại tuyến.", true));
