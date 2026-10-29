@@ -17,5 +17,8 @@ def run_pipeline(image: bytes, config: DetectionConfig, content_type: str) -> Sc
                                  preview=f.preview, source=f.source) for f in findings]
     message = ("Đã nhận diện văn bản. Kết quả tự động có thể bỏ sót thông tin; vui lòng kiểm tra lại ảnh trước khi chia sẻ."
                if findings else "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.")
+    warnings=list(ocr_result.warnings)
+    if any(f.ocr_confidence < .20 for f in findings):
+        warnings.append('Có vùng đọc chưa rõ, được đề xuất nhờ ngữ cảnh. Hãy kiểm tra kỹ hoặc đánh dấu bổ sung.')
     return ScanResult(width=ocr_result.width, height=ocr_result.height, findings=public_findings,
-                      language=ocr_result.language, warnings=ocr_result.warnings, message=message)
+                      language=ocr_result.language, warnings=warnings, message=message)

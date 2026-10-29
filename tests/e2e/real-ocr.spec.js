@@ -27,7 +27,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
   expect(result.mode).toBe("real_ocr");
   await expect(page.locator("#finding-count")).toHaveText("5");
   await expect(page.locator(".finding-info small").first()).toContainText(
-    "OCR:",
+    "Độ tin cậy",
   );
   await expect(page.locator("#findings-list")).toContainText(
     "te***@example.com",
@@ -36,6 +36,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
     "test.screenguard@example.com",
   );
   await expect(page.locator("[data-finding]:checked")).toHaveCount(5);
+  await page.locator("#advanced-tools>summary").click();
   await page.locator(".coordinates summary").click();
   for (const [key, value] of Object.entries({
     x: "50",
@@ -46,6 +47,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
     await page.locator(`#coordinate-form [name="${key}"]`).fill(value);
   await page.locator('#coordinate-form [type="submit"]').click();
   await expect(page.locator("#finding-count")).toHaveText("6");
+  await page.locator("#image-menu>summary").click();
   await page.locator("#start-scan").click();
   await expect(page.locator("#scan-progress")).toBeHidden();
   await expect(page.locator("#finding-count")).toHaveText("6");
@@ -156,10 +158,11 @@ test("TC13 OCR unavailable leaves manual marking/redaction available", async ({
     .locator("#image-input")
     .setInputFiles("sample_data/screenshots/email.png");
   await expect(page.locator("#scanner-error")).toContainText(
-    "Tesseract chưa sẵn sàng",
+    "Bộ kiểm tra ảnh chưa sẵn sàng",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
   await expect(page.locator("#toggle-draw")).toBeEnabled();
+  await page.locator("#advanced-tools>summary").click();
   await page.locator(".coordinates summary").click();
   for (const [key, value] of Object.entries({
     x: "440",

@@ -10,6 +10,12 @@ Các bộ ảnh gồm Email, SĐT, MSSV, CCCD, STK, tất cả 5 loại, ảnh s
 token bị tách và nhãn tiếng Việt. Tạo lại bằng `python sample_data/generate_samples.py`
 (Arial hoặc DejaVu Sans). Không dùng thông tin cá nhân thật.
 
+Phase 2.5: `bank.png`/`all.png` dùng nhãn Account number. Bổ sung `bank_vietnamese.png`
+(Tài khoản ngân hàng), `bank_tight.png` (giá trị sát nhãn) và `bank_difficult.png`
+(chữ nhỏ hơn, xám và hơi mờ). Generator tự chừa khoảng cách theo chiều rộng nhãn;
+chỉ fixture tight cố ý đặt sát. Ảnh tight trên Tesseract đã kiểm thử đọc đúng số nhưng
+confidence thấp; detector đề xuất kèm cảnh báo khi có context, không thay OCR bằng mock.
+
 ## Phase 1 — demo mô phỏng được giữ riêng
 
 Fixture cố định được vẽ bằng Canvas trong `frontend/js/services/mock-scanner.js`.

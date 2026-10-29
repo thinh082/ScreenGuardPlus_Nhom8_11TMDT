@@ -64,6 +64,45 @@
       ]
     ]
   },
+  "bank_vietnamese": {
+    "values": [
+      "111111111111"
+    ],
+    "value_boxes": [
+      [
+        443,
+        52,
+        682,
+        78
+      ]
+    ]
+  },
+  "bank_tight": {
+    "values": [
+      "111111111111"
+    ],
+    "value_boxes": [
+      [
+        314,
+        52,
+        553,
+        78
+      ]
+    ]
+  },
+  "bank_difficult": {
+    "values": [
+      "123456789012"
+    ],
+    "value_boxes": [
+      [
+        440,
+        51,
+        644,
+        73
+      ]
+    ]
+  },
   "clean": {
     "values": [
       "ScreenGuard Plus",

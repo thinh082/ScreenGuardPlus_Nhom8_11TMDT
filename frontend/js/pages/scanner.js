@@ -1,5 +1,6 @@
 import { icon } from "../components/icons.js";
-import { heading, notice, escapeHTML, toast } from "../components/ui.js";
+import { escapeHTML, toast } from "../components/ui.js";
+import { scannerView } from "../components/scanner-view.js";
 import { getDetectionConfig } from "../services/config-service.js";
 import { createDemoCanvas, DEMO_ID } from "../services/mock-scanner.js";
 import {
@@ -22,29 +23,12 @@ export function scannerPage(main) {
     stream = null,
     disposed = false,
     generation = 0,
-    cameraGeneration = 0;
-  main.innerHTML =
-    heading(
-      "",
-      "Kiểm tra ảnh",
-      "Giữ riêng thông tin trước khi chia sẻ.",
-      `<span id="scan-mode" class="badge mint">${icon("shield")} OCR thật</span>`,
-    ) +
-    `
-    ${notice("Ảnh được xử lý tại máy chủ ứng dụng. Luôn kiểm tra lại trước khi chia sẻ.")}
-    <div class="mobile-scan-tabs" role="tablist" aria-label="Không gian kiểm tra"><button id="mobile-image-tab" role="tab" aria-selected="true" aria-controls="scan-image-panel" class="active">${icon("image")} Hình ảnh</button><button id="mobile-findings-tab" role="tab" aria-selected="false" aria-controls="scan-findings-panel">${icon("scan")} Kết quả <span id="mobile-finding-count" class="count">0</span></button></div>
-    <div class="scanner-layout"><section class="panel scanner-workspace"><div class="workspace-header"><h2>${icon("image")} Ảnh của bạn</h2><button id="clear-image" class="button subtle small-button" disabled>${icon("trash")} Xóa ảnh</button></div>
-      <div id="dropzone" class="dropzone"><div class="upload-art">${icon("upload")}</div><h2>Thêm ảnh để kiểm tra</h2><p>Kéo thả hoặc chọn từ thiết bị.</p><button class="button primary" id="choose-image">${icon("plus")} Chọn ảnh</button><span class="small muted">PNG, JPG, WebP · Tối đa 10 MB / 20 MP</span><div class="actions"><button class="button secondary" id="demo-image">${icon("image")} Thử ảnh mẫu</button><button class="button secondary" id="open-camera">${icon("camera")} Chụp ảnh</button></div></div>
-      <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-      <input id="camera-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
-      <div id="editor" hidden><div class="editor-toolbar"><div class="segmented"><button id="view-before" class="active" aria-pressed="true">Ảnh gốc</button><button id="view-after" disabled aria-pressed="false">Sau khi che</button></div><button class="button secondary small-button" id="replace-image">${icon("upload")} Đổi ảnh</button></div><div class="canvas-stage"><canvas id="preview-canvas" aria-label="Ảnh xem trước. Bật đánh dấu và kéo để chọn vùng; hoặc nhập tọa độ bên dưới."></canvas></div><div class="canvas-meta"><span id="image-meta"></span><span id="view-label">Ảnh gốc</span></div><div class="manual-tools"><button id="toggle-draw" class="button secondary small-button" aria-pressed="false">${icon("plus")} Đánh dấu vùng</button><button id="start-scan" class="button secondary small-button">${icon("scan")} Kiểm tra ảnh</button><span class="small muted" id="draw-hint">Chọn vùng riêng tư để che.</span></div>
-      <details class="coordinates"><summary>Đánh dấu bằng tọa độ (pixel)</summary><form id="coordinate-form"><label>X<input name="x" type="number" min="0" required value="0"></label><label>Y<input name="y" type="number" min="0" required value="0"></label><label>Rộng<input name="width" type="number" min="1" required></label><label>Cao<input name="height" type="number" min="1" required></label><button type="submit" class="button secondary small-button">Thêm vùng</button></form></details></div>
-      <div id="scan-progress" class="scan-progress" role="status" hidden><div class="row-between"><span id="progress-label">Đang chuẩn bị…</span><span id="progress-number"></span></div><progress id="progress-bar" max="100" aria-label="Tiến trình kiểm tra"></progress></div><p id="scanner-error" class="error-text" role="alert"></p><p id="scan-warnings" class="small muted" role="status"></p>
-      <div class="workspace-footer">${icon("lock")} Không lưu ảnh hoặc kết quả vào bộ nhớ đệm.</div></section>
-      <aside class="panel findings-panel"><div class="section-title"><h2>Kết quả <span id="finding-count" class="count">0</span></h2>${icon("scan")}</div><div id="result-status" class="result-status">Chưa có ảnh</div><div id="selection-tools" class="selection-tools" hidden><button id="select-all" class="text-button">Chọn tất cả</button><button id="deselect-all" class="text-button">Bỏ chọn</button></div><div id="findings-list" class="findings-list"></div><div class="redaction-actions"><p id="selection-summary" class="small muted">Chọn ảnh để bắt đầu kiểm tra.</p><button id="redact-selected" class="button primary full-width" disabled>${icon("eyeOff")} Che vùng đã chọn</button><button id="download-image" class="button secondary full-width" disabled>${icon("download")} Tải ảnh PNG</button></div><p class="small muted findings-warning">${icon("info")} Tự động có thể bỏ sót. Hãy kiểm tra lại ảnh.</p></aside></div>
-    <div class="scanner-tip">${icon("shield")} <span><strong>Bạn chủ động chọn ảnh.</strong> Không theo dõi thư viện ảnh.</span></div>
-    <dialog id="camera-dialog" class="camera-dialog"><div class="section-title"><h2>Chụp ảnh để kiểm tra</h2><button id="close-camera" class="icon-button" aria-label="Đóng camera">${icon("x")}</button></div><video id="camera-video" autoplay playsinline muted></video><p id="camera-error" role="alert" class="error-text"></p><div class="actions"><button id="capture-photo" class="button primary" disabled>${icon("camera")} Chụp ảnh</button><button id="native-camera" class="button secondary">Dùng camera thiết bị</button></div><p class="small muted">Camera chỉ hoạt động khi cửa sổ này đang mở.</p></dialog>`;
+    cameraGeneration = 0,
+    activeFinding = null;
+  main.innerHTML = scannerView();
   const $ = (selector) => main.querySelector(selector);
+  // A loading state above the preview remains visible on compact screens.
+  $(".workspace-header").after($("#scan-progress"));
   main.dataset.mobilePanel = "image";
   $(".scanner-workspace").id = "scan-image-panel";
   $(".findings-panel").id = "scan-findings-panel";
@@ -77,7 +61,9 @@ export function scannerPage(main) {
   const preview = $("#preview-canvas");
   function setError(message = "") {
     $("#scanner-error").textContent = message;
+    $("#scan-recovery").hidden = !message || !original;
     if (message) toast(message, true);
+    if (message) main.dataset.scanState = "error";
   }
   function invalidateRedaction() {
     redacted = null;
@@ -97,11 +83,18 @@ export function scannerPage(main) {
         (preview.getBoundingClientRect().width || original.width);
       for (const finding of findings) {
         const { x, y, width, height } = finding.box;
-        ctx.strokeStyle = selected.has(finding.id) ? "#099c83" : "#d49021";
-        ctx.fillStyle = selected.has(finding.id)
-          ? "rgba(12,190,153,.12)"
-          : "rgba(240,160,40,.08)";
-        ctx.lineWidth = 2 * scale;
+        const active = finding.id === activeFinding;
+        ctx.strokeStyle = active
+          ? "#0875dc"
+          : selected.has(finding.id)
+            ? "#099c83"
+            : "#d49021";
+        ctx.fillStyle = active
+          ? "rgba(8,117,220,.20)"
+          : selected.has(finding.id)
+            ? "rgba(12,190,153,.12)"
+            : "rgba(240,160,40,.08)";
+        ctx.lineWidth = (active ? 3.5 : 2) * scale;
         ctx.fillRect(x, y, width, height);
         ctx.strokeRect(x, y, width, height);
       }
@@ -117,9 +110,13 @@ export function scannerPage(main) {
     $("#view-after").classList.toggle("active", view === "after");
     $("#view-after").setAttribute("aria-pressed", String(view === "after"));
     $("#view-label").textContent =
-      view === "after" ? "Ảnh đã che" : "Ảnh gốc · vùng đánh dấu";
+      view === "after"
+        ? `Đã che ${selected.size} vùng`
+        : "Ảnh gốc · nhấn vùng để chọn";
+    preview.dataset.activeFinding = activeFinding || "";
   }
   function renderFindings() {
+    const focusedCheckbox = document.activeElement?.dataset.finding;
     $("#finding-count").textContent = findings.length;
     $("#mobile-finding-count").textContent = findings.length;
     $("#selection-tools").hidden = !findings.length;
@@ -127,12 +124,14 @@ export function scannerPage(main) {
       ? findings
           .map(
             (f) =>
-              `<div class="finding-row"><label><input type="checkbox" data-finding="${escapeHTML(f.id)}" ${selected.has(f.id) ? "checked" : ""}><span class="finding-info"><strong>${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small>${f.type === "manual" ? "Đánh dấu thủ công" : fixtureId ? "Mô phỏng" : `OCR: ${Math.round(f.ocr_confidence * 100)}% · Điểm: ${f.score.toFixed(2)}`}</small></span></label><span class="risk ${f.risk}">${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk]}</span>${f.type === "manual" ? `<button class="icon-button" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : ""}</div>`,
+              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-icon">${icon({ email: "mail", phone: "phone", student: "book", cccd: "card", bank: "bank", custom: "code", manual: "image" }[f.type])}</span><span class="finding-info"><strong>${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small>${f.type === "manual" ? "Thủ công" : fixtureId ? "Mô phỏng" : `Độ tin cậy ${Math.round(f.ocr_confidence * 100)}%`}</small></span></button><span class="risk ${f.risk}">${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk]}</span>${f.type === "manual" ? `<button class="icon-button" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : ""}</div>`,
           )
           .join("")
       : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
     $("#selection-summary").textContent = original
-      ? `${selected.size}/${findings.length} vùng được chọn để che.`
+      ? redacted
+        ? `Đã che ${selected.size} vùng. Xem lại trước khi tải.`
+        : `${selected.size}/${findings.length} vùng được chọn để che.`
       : "Chọn ảnh để bắt đầu kiểm tra.";
     $("#redact-selected").disabled = !selected.size || busy;
     $("#download-image").disabled = !redacted || busy;
@@ -141,25 +140,46 @@ export function scannerPage(main) {
       .querySelectorAll("input,button")
       .forEach((el) => (el.disabled = busy));
     $("#start-scan").disabled = busy || !original;
+    $("#retry-scan").disabled = busy;
+    $("#error-manual").disabled = busy;
+    if (focusedCheckbox)
+      $("#findings-list")
+        .querySelector(`[data-finding="${CSS.escape(focusedCheckbox)}"]`)
+        ?.focus({ preventScroll: true });
     paint();
   }
   function setBusy(value) {
     busy = value;
     $("#scan-progress").hidden = !value;
+    $(".scanner-workspace").setAttribute("aria-busy", String(value));
+    main.dataset.scanState = value
+      ? "loading"
+      : $("#scanner-error").textContent
+        ? "error"
+        : original
+          ? findings.length
+            ? "success"
+            : "empty-result"
+          : "empty";
     if (value) {
       $("#progress-bar").removeAttribute("value");
       $("#progress-number").textContent = "";
+      $("#progress-label").textContent = "Đang kiểm tra thông tin nhạy cảm…";
     }
     renderFindings();
   }
   async function runScan() {
     if (!original || busy) return;
+    stopDrawing();
+    $("#image-menu").open = false;
     controller?.abort();
     controller = new AbortController();
     const localController = controller;
+    const scanGeneration = generation;
     setError();
     $("#scan-warnings").textContent = "";
     findings = findings.filter((f) => f.type === "manual");
+    if (!findings.some((f) => f.id === activeFinding)) activeFinding = null;
     selected = new Set(
       [...selected].filter((id) => findings.some((f) => f.id === id)),
     );
@@ -167,23 +187,30 @@ export function scannerPage(main) {
     setBusy(true);
     $("#result-status").textContent = fixtureId
       ? "Đang mô phỏng trên ảnh mẫu…"
-      : "Đang nhận diện văn bản…";
+      : "Đang kiểm tra thông tin nhạy cảm…";
     try {
       const result = await scanImage(original, getDetectionConfig(), {
         fixtureId,
         signal: localController.signal,
         onProgress: (percent, label) => {
-          if (disposed || localController.signal.aborted) return;
-          if (percent === null) $("#progress-bar").removeAttribute("value");
-          else $("#progress-bar").value = percent;
-          $("#progress-number").textContent =
-            percent === null ? "Đang xử lý" : `${percent}%`;
-          $("#progress-label").textContent = fixtureId
-            ? "Mô phỏng kiểm tra tài liệu mẫu…"
-            : label || "Đang nhận diện văn bản…";
+          if (
+            disposed ||
+            localController.signal.aborted ||
+            scanGeneration !== generation
+          )
+            return;
+          $("#progress-bar").removeAttribute("value");
+          $("#progress-number").textContent = fixtureId
+            ? "Đang kiểm tra ảnh mẫu mô phỏng…"
+            : label || "Đang đọc văn bản trong ảnh…";
         },
       });
-      if (disposed || localController.signal.aborted) return;
+      if (
+        disposed ||
+        localController.signal.aborted ||
+        scanGeneration !== generation
+      )
+        return;
       const manual = findings.filter((f) => f.type === "manual");
       findings = [...result.findings, ...manual];
       selected = new Set(findings.map((f) => f.id));
@@ -192,27 +219,35 @@ export function scannerPage(main) {
         result.status === "demo"
           ? `Ảnh mẫu · ${result.findings.length} vùng mô phỏng theo cấu hình`
           : result.findings.length
-            ? `OCR hoàn tất · ${result.findings.length} vùng tự động · ${result.language}`
+            ? `Phát hiện ${result.findings.length} thông tin có thể nhạy cảm`
             : result.message;
       $("#scan-warnings").textContent = (result.warnings || []).join(" ");
     } catch (error) {
       if (
         error.name !== "AbortError" &&
         !disposed &&
-        controller === localController
+        controller === localController &&
+        scanGeneration === generation
       ) {
         $("#result-status").textContent =
-          "Chưa hoàn tất nhận diện · vẫn có thể đánh dấu thủ công";
+          "Chưa kiểm tra xong. Hãy thử lại hoặc đánh dấu thủ công.";
+        setMobilePanel("image");
         setError(error.message);
       }
     } finally {
-      if (!disposed && controller === localController) setBusy(false);
+      if (
+        !disposed &&
+        controller === localController &&
+        scanGeneration === generation
+      )
+        setBusy(false);
     }
   }
   function stopDrawing() {
     drawing = false;
     pointerStart = null;
     preview.classList.remove("drawing");
+    preview.style.cursor = "";
     $("#toggle-draw").classList.remove("active");
     $("#toggle-draw").setAttribute("aria-pressed", "false");
   }
@@ -221,9 +256,12 @@ export function scannerPage(main) {
     busy = false;
     original = canvas;
     fixtureId = id;
+    activeFinding = null;
+    $("#advanced-tools").open = false;
+    $("#image-menu").open = false;
     main.classList.add("has-image");
     setMobilePanel("image");
-    $("#scan-mode").textContent = id ? "Ảnh mẫu · Mô phỏng" : "OCR thật";
+    $("#scan-mode").textContent = id ? "Ảnh mẫu · Mô phỏng" : "Tự động";
     $("#scan-warnings").textContent = "";
     findings = [];
     selected.clear();
@@ -244,17 +282,32 @@ export function scannerPage(main) {
       $("#coordinate-form").elements[field].max = canvas.height;
     setError();
     renderFindings();
-    if (getDetectionConfig().mode === "auto") runScan();
+    runScan();
   }
   async function importFile(file) {
     if (!file) return;
     const token = ++generation;
+    controller?.abort();
+    controller = null;
+    findings = [];
+    selected.clear();
+    activeFinding = null;
+    invalidateRedaction();
+    stopDrawing();
     setError();
+    setBusy(true);
+    $("#progress-number").textContent = "Đang mở ảnh…";
+    $("#result-status").textContent = "Đang mở ảnh mới…";
     try {
       const canvas = await decodeImage(file);
       if (!disposed && token === generation) loadCanvas(canvas, file.name);
     } catch (error) {
-      if (!disposed && token === generation) setError(error.message);
+      if (!disposed && token === generation) {
+        setBusy(false);
+        $("#result-status").textContent =
+          "Không mở được ảnh. Hãy chọn lại hoặc đánh dấu thủ công.";
+        setError(error.message);
+      }
     } finally {
       if (!disposed) {
         $("#image-input").value = "";
@@ -268,6 +321,7 @@ export function scannerPage(main) {
     generation++;
     controller?.abort();
     original = null;
+    activeFinding = null;
     redacted = null;
     fixtureId = null;
     findings = [];
@@ -282,7 +336,9 @@ export function scannerPage(main) {
     $("#clear-image").disabled = true;
     $("#result-status").textContent = "Chưa có ảnh";
     $("#scan-warnings").textContent = "";
-    $("#scan-mode").textContent = "OCR thật";
+    $("#scan-mode").textContent = "Tự động";
+    $(".scanner-workspace").setAttribute("aria-busy", "false");
+    main.dataset.scanState = "empty";
     setError();
     renderFindings();
     toast("Đã xóa ảnh và kết quả khỏi phiên quét.");
@@ -314,6 +370,7 @@ export function scannerPage(main) {
       box,
     });
     selected.add(id);
+    activeFinding = id;
     invalidateRedaction();
     setError();
     renderFindings();
@@ -347,6 +404,36 @@ export function scannerPage(main) {
       height: Math.ceil(Math.max(a.y, b.y)) - y,
     };
   }
+  function activateFinding(id, { reveal = false } = {}) {
+    if (!findings.some((f) => f.id === id)) return;
+    activeFinding = id;
+    if (reveal) {
+      view = "before";
+      stopDrawing();
+      setMobilePanel("image");
+    }
+    $("#findings-list")
+      .querySelectorAll("[data-row]")
+      .forEach((row) =>
+        row.classList.toggle("is-active", row.dataset.row === id),
+      );
+    paint();
+  }
+  function hitFinding(event) {
+    if (!original || view !== "before") return null;
+    const { x, y } = point(event);
+    return findings
+      .filter(
+        (f) =>
+          x >= f.box.x &&
+          x <= f.box.x + f.box.width &&
+          y >= f.box.y &&
+          y <= f.box.y + f.box.height,
+      )
+      .sort(
+        (a, b) => a.box.width * a.box.height - b.box.width * b.box.height,
+      )[0];
+  }
   preview.addEventListener("pointerdown", (event) => {
     if (!drawing || busy || view !== "before") return;
     event.preventDefault();
@@ -355,6 +442,11 @@ export function scannerPage(main) {
   });
   preview.addEventListener("pointermove", (event) => {
     if (pointerStart && drawing) paint(boxTo(pointerStart, point(event)));
+    else if (!drawing && !busy) {
+      const hit = hitFinding(event);
+      preview.style.cursor = hit ? "pointer" : "";
+      if (hit && hit.id !== activeFinding) activateFinding(hit.id);
+    }
   });
   preview.addEventListener("pointerup", (event) => {
     if (!pointerStart) return;
@@ -366,6 +458,15 @@ export function scannerPage(main) {
   preview.addEventListener("pointercancel", () => {
     pointerStart = null;
     paint();
+  });
+  preview.addEventListener("click", (event) => {
+    if (drawing || busy || view !== "before") return;
+    const hit = hitFinding(event);
+    if (!hit) return;
+    activeFinding = hit.id;
+    selected.has(hit.id) ? selected.delete(hit.id) : selected.add(hit.id);
+    invalidateRedaction();
+    renderFindings();
   });
   $("#coordinate-form").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -389,8 +490,20 @@ export function scannerPage(main) {
   };
   $("#clear-image").onclick = clearImage;
   $("#start-scan").onclick = runScan;
+  $("#retry-scan").onclick = runScan;
+  function openManual() {
+    if (!original || busy) return;
+    $("#image-menu").open = false;
+    $("#advanced-tools").open = true;
+    setMobilePanel("image");
+    if (!drawing) $("#toggle-draw").click();
+    preview.focus({ preventScroll: true });
+  }
+  $("#open-manual").onclick = openManual;
+  $("#error-manual").onclick = openManual;
   $("#toggle-draw").onclick = () => {
     drawing = !drawing;
+    preview.style.cursor = "";
     view = "before";
     preview.classList.toggle("drawing", drawing);
     $("#toggle-draw").classList.toggle("active", drawing);
@@ -425,18 +538,34 @@ export function scannerPage(main) {
     if (event.target.dataset.finding) {
       const id = event.target.dataset.finding;
       event.target.checked ? selected.add(id) : selected.delete(id);
+      activeFinding = id;
       invalidateRedaction();
       renderFindings();
     }
   });
   $("#findings-list").addEventListener("click", (event) => {
+    const focusButton = event.target.closest("[data-focus]");
+    if (focusButton) {
+      activateFinding(focusButton.dataset.focus, { reveal: true });
+      return;
+    }
     const button = event.target.closest("[data-remove]");
     if (button) {
       findings = findings.filter((f) => f.id !== button.dataset.remove);
       selected.delete(button.dataset.remove);
+      if (activeFinding === button.dataset.remove) activeFinding = null;
       invalidateRedaction();
       renderFindings();
     }
+  });
+  $("#findings-list").addEventListener("pointerover", (event) => {
+    const row = event.target.closest("[data-row]");
+    if (row && row.dataset.row !== activeFinding)
+      activateFinding(row.dataset.row);
+  });
+  $("#findings-list").addEventListener("focusin", (event) => {
+    const row = event.target.closest("[data-row]");
+    if (row) activateFinding(row.dataset.row);
   });
   $("#redact-selected").onclick = () => {
     try {
@@ -445,6 +574,7 @@ export function scannerPage(main) {
         findings.filter((f) => selected.has(f.id)),
       );
       view = "after";
+      setMobilePanel("image");
       stopDrawing();
       $("#view-after").disabled = false;
       renderFindings();
@@ -454,8 +584,17 @@ export function scannerPage(main) {
     }
   };
   $("#download-image").onclick = () => {
-    if (!redacted) return;
-    redacted.toBlob((blob) => {
+    if (!redacted || busy) return;
+    const exportCanvas = redacted,
+      exportGeneration = generation;
+    exportCanvas.toBlob((blob) => {
+      if (
+        disposed ||
+        exportGeneration !== generation ||
+        exportCanvas !== redacted ||
+        busy
+      )
+        return;
       if (!blob) {
         setError("Không thể xuất ảnh. Vui lòng thử lại.");
         return;

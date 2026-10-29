@@ -122,10 +122,17 @@ export function getDetectionConfig() {
   } catch {
     /* Storage blocked or corrupted: keep valid in-memory defaults. */
   }
+  if (memory.mode !== "auto") {
+    memory.mode = "auto";
+    try {
+      globalThis.localStorage?.setItem(KEY, JSON.stringify(memory));
+    } catch {}
+  }
   return structuredClone(memory);
 }
 export function updateDetectionConfig(config) {
   memory = validateConfig(config);
+  memory.mode = "auto";
   let persisted = false;
   try {
     globalThis.localStorage?.setItem(KEY, JSON.stringify(memory));

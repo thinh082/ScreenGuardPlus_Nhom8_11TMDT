@@ -2,14 +2,17 @@
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 CASES = {
     "email": [("Email:", "test.screenguard@example.com")],
     "phone": [("Phone:", "0900000000")],
     "student": [("Student ID:", "SV20260001")],
     "citizen": [("Citizen ID:", "000000000000")],
-    "bank": [("Bank account:", "111111111111")],
+    "bank": [("Account number:", "111111111111")],
+    "bank_vietnamese": [("Tài khoản ngân hàng:", "111111111111")],
+    "bank_tight": [("Account number", "111111111111")],
+    "bank_difficult": [("Account number:", "123456789012")],
     "clean": [("Project:", "ScreenGuard Plus"), ("Status:", "Ready for review")],
     "custom": [("Reference:", "NV-246810"), ("Classification:", "CONFIDENTIAL")],
     "split": [("Email:", "test.screenguard @ example.com"), ("Phone:", "090 000 0000")],
@@ -18,11 +21,11 @@ CASES = {
 CASES["all"] = [item for key in ("email", "phone", "student", "citizen", "bank") for item in CASES[key]]
 
 
-def sample_image(lines):
+def sample_image(lines, tight=False, difficult=False):
     font = None
     for candidate in ("C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "Arial.ttf"):
         try:
-            font = ImageFont.truetype(candidate, 36)
+            font = ImageFont.truetype(candidate, 30 if difficult else 36)
             break
         except OSError:
             continue
@@ -34,8 +37,12 @@ def sample_image(lines):
     for index, (label, value) in enumerate(lines):
         y = 45 + 90*index
         draw.text((50, y), label, font=font, fill="black")
-        draw.text((440, y), value, font=font, fill="black")
-        boxes.append(list(draw.textbbox((440, y), value, font=font)))
+        label_right=draw.textbbox((50,y),label,font=font)[2]
+        value_x=label_right+1 if tight else max(440,label_right+45)
+        draw.text((value_x, y), value, font=font, fill="#555555" if difficult else "black")
+        boxes.append(list(draw.textbbox((value_x, y), value, font=font)))
+    if difficult:
+        image=image.filter(ImageFilter.GaussianBlur(.3))
     return image, boxes
 
 
@@ -44,7 +51,7 @@ if __name__ == "__main__":
     target.mkdir(exist_ok=True)
     expected = {}
     for name, lines in CASES.items():
-        image, boxes = sample_image(lines)
+        image, boxes = sample_image(lines,tight=name=='bank_tight',difficult=name=='bank_difficult')
         image.save(target / f"{name}.png")
         expected[name] = {"values": [value for _, value in lines], "value_boxes": boxes}
     (target / "expected.json").write_text(json.dumps(expected, ensure_ascii=False, indent=2), encoding="utf-8")

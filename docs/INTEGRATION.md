@@ -1,4 +1,4 @@
-# Hợp đồng tích hợp · Phase 2
+# Hợp đồng tích hợp · Phase 2.5
 
 ## API
 
@@ -67,9 +67,13 @@ bytes thực tế. Frontend hiện gửi PNG được vẽ từ Canvas đã áp 
 }
 ```
 
-`mode`: auto/manual điều khiển thời điểm UI gọi API. `language`: vie/eng/vie+eng;
+`mode`: giữ auto/manual trong schema để tương thích API cũ, nhưng UI Phase 2.5 luôn
+quét khi nhập ảnh và tự chuyển cấu hình manual cũ về auto. `language`: vie/eng/vie+eng;
 thiếu vie sẽ dùng eng khi có và trả warnings. `sensitivity`: low/balanced/high là
 ngưỡng OCR confidence trung bình tối thiểu .60/.20/0, không phải điểm xác suất.
+Ngoại lệ Cân bằng/Cao: chuỗi 8–19 số có nhãn tài khoản rõ vẫn được đề xuất dù OCR
+confidence thấp; confidence gốc không bị nâng lên, score giảm tối đa .75 và response
+có cảnh báo. Low vẫn lọc chặt. Không áp ngoại lệ cho chuỗi số thiếu ngữ cảnh.
 `types.custom` là master switch; từng rule cũng phải enabled. Không lưu cấu hình tại server.
 
 Response minh họa schema (giá trị thực tế do OCR/detector tạo):
@@ -150,12 +154,20 @@ Không log text hoặc bytes; không chuyển lỗi gốc Tesseract chứa đư�
   và bbox sang `{x,y,width,height}`. Trả `status:'complete', source:'ocr'`.
 - Dữ liệu sidebar dùng masked preview qua escapeHTML; không inject OCR text.
 - `onProgress(null,label)` cho giai đoạn không đo được phần trăm; không mô phỏng
-  phần trăm Tesseract. Hoàn tất trả 100. Timeout mạng 35 giây, signal được chuyển tiếp.
+  phần trăm Tesseract; hoàn tất cũng dùng nhãn thay vì phần trăm giả. Timeout mạng
+  35 giây, signal được chuyển tiếp.
 - fixtureId chỉ do nút demo gán: mock giữ riêng, không gửi ảnh tới API, không dùng cho upload.
 - Lỗi ném Error, không trả kết quả giả/empty như một lần OCR thành công. UI hiển thị
   lỗi và mở lại công cụ đánh dấu thủ công. Không có findings chỉ được báo khi scan thành công.
 - Findings thủ công được giữ khi quét lại cùng ảnh, ghép với kết quả tự động mới.
   Đổi selection làm vô hiệu hóa PNG cũ; cần che lại trước khi tải.
+
+Mỗi import có generation riêng: tăng ngay khi chọn ảnh mới, abort request cũ và bỏ
+findings cũ trước khi decode. Cả progress, response, finally lẫn xuất PNG đều kiểm tra
+generation/current controller. `busy` chặn quét lại trùng. Response cũ vẫn bị bỏ qua
+kể cả adapter không tôn trọng AbortSignal. View tách tại `components/scanner-view.js`;
+logic Canvas/camera vẫn ở `pages/scanner.js`. Dataset active finding chỉ giữ ID vùng,
+không lưu nội dung. Checkbox, focus/hover hàng kết quả và hit-test Canvas cùng dùng ID.
 
 `redactImage(canvas, findings)` → Canvas mới tô đục #111827, nguyên kích thước.
 Không thay thuật toán che Phase 1. `getDetectionConfig`/`updateDetectionConfig` vẫn

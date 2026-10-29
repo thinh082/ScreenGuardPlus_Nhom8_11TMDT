@@ -11,13 +11,13 @@ from core.ocr import build_lines
 from core.rules import RuleValidationError, compile_pattern, validate_rules
 
 EMAIL = re.compile(r"(?<![\w.+-])[A-Z0-9_+%-]+(?:\s*\.\s*[A-Z0-9_+%-]+)*\s*@\s*[A-Z0-9-]+(?:\s*\.\s*[A-Z0-9-]+)*\s*\.\s*[A-Z]{2,63}(?![\w.-])", re.I)
-NUMBER = re.compile(r"(?<![\w+])\+?\d(?:[ .-]*\d){5,18}(?![ .-]*\d)(?!\w)")
+NUMBER = re.compile(r"(?<![\d+])\+?\d(?:[ .-]*\d){5,18}(?![ .-]*\d)(?!\w)")
 PHONE = re.compile(r"(?:0|\+?84)[35789]\d{8}\Z")
 STUDENT = re.compile(r"\bSV[ .-]?\d{6,12}\b", re.I)
 IDENTIFIER = re.compile(r"\b[A-Z0-9][A-Z0-9._-]{4,19}\b", re.I)
 CONTEXTS = {
     "cccd": re.compile(r"\b(?:cccd|can cuoc(?: cong dan)?|citizen\s*id)\b"),
-    "bank": re.compile(r"\b(?:stk|so tai khoan|bank account|account (?:number|no))\b"),
+    "bank": re.compile(r"(?<![a-z])(?:stk|(?:so\s+)?tai\s+khoan(?:\s+ngan\s+hang)?|bank\s*account(?:\s*(?:number|no))?|account\s*(?:number|no))(?=$|[^a-z])"),
     "student": re.compile(r"\b(?:mssv|ma (?:so )?sinh vien|student\s*id)\b"),
     "phone": re.compile(r"\b(?:sdt|so dien thoai|dien thoai|phone|telephone)\b"),
 }
@@ -62,7 +62,7 @@ def detect_sensitive_text(ocr_result: OCRResult, rules: DetectionConfig) -> list
     occupied = [[] for _ in lines]
     min_confidence = {"low": .60, "balanced": .20, "high": 0}[rules.sensitivity]
 
-    def add(line_index, start, end, kind, score, label=None, risk="high", source="ocr_regex"):
+    def add(line_index, start, end, kind, score, label=None, risk="high", source="ocr_regex", contextual=False):
         if end <= start or any(start < b and end > a for a, b in occupied[line_index]):
             return
         line = lines[line_index]
@@ -71,7 +71,12 @@ def detect_sensitive_text(ocr_result: OCRResult, rules: DetectionConfig) -> list
             return
         confidence = sum(token.confidence * len(token.text) for token in tokens) / sum(len(token.text) for token in tokens)
         if confidence < min_confidence:
-            return
+            # Clear financial labels plus a plausible numeric span are still worth
+            # reviewing. Preserve actual OCR confidence; never inflate certainty.
+            if not (kind == 'bank' and contextual and rules.sensitivity != 'low'):
+                return
+        if kind == 'bank' and contextual and confidence < .20:
+            score=min(score,.75)
         left = max(0, min(token.box.x for token in tokens) - 2)
         top = max(0, min(token.box.y for token in tokens) - 2)
         right = min(ocr_result.width, max(token.box.x + token.box.width for token in tokens) + 2)
@@ -116,6 +121,10 @@ def detect_sensitive_text(ocr_result: OCRResult, rules: DetectionConfig) -> list
             value = re.sub(r"[ .-]", "", match[0])
             digits = value.lstrip("+")
             context = context_for(index, *match.span())
+            # A label and its value may be one OCR token (AccountNumber111...).
+            # Permit that only with an explicit nearby context, never for arbitrary IDs.
+            if match.start() and (line.text[match.start()-1].isalnum() or line.text[match.start()-1]=='_') and not context:
+                continue
             kind = None
             if context == "cccd" and len(digits) == 12:
                 kind = "cccd"
@@ -128,7 +137,7 @@ def detect_sensitive_text(ocr_result: OCRResult, rules: DetectionConfig) -> list
             # A disabled contextual category must never be relabeled as another category.
             if kind and getattr(rules.types, kind):
                 add(index, *match.span(), kind, .93 if context else .88,
-                    risk="medium" if kind in {"phone", "student"} else "high")
+                    risk="medium" if kind in {"phone", "student"} else "high",contextual=context=='bank')
 
     if rules.types.custom:
         total_deadline = time.monotonic() + CUSTOM_TOTAL_SECONDS

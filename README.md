@@ -1,4 +1,4 @@
-# ScreenGuard+ · Phase 2
+# ScreenGuard+ · Phase 2.5
 
 PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
 Giao diện gọn, responsive, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
@@ -55,14 +55,17 @@ Các ảnh trong `sample_data/screenshots/` chỉ chứa dữ liệu hư cấu.
 
 1. Mở **Kiểm tra hình ảnh**, tải `sample_data/screenshots/all.png`.
 2. Ứng dụng gửi ảnh PNG đã chuẩn hóa tới Python backend cùng cấu hình hiện tại.
-   Trong chế độ mặc định, OCR chạy ngay sau khi nhập ảnh.
+   Ảnh hợp lệ luôn được quét ngay khi chọn, kéo thả, chụp hoặc thay ảnh; không cần bấm quét.
 3. Tesseract đọc chữ và detector tìm Email, SĐT, MSSV, CCCD, số tài khoản. Bounding
    boxes tự xuất hiện; sidebar dùng preview đã che bớt ký tự.
-4. Bỏ chọn/chọn vùng tùy ý, có thể thêm vùng thủ công bằng kéo hoặc tọa độ pixel.
-   Nhấn **Che vùng đã chọn**, so sánh **Ảnh gốc / Sau khi che**, rồi **Tải ảnh PNG**.
+4. Nhấn kết quả để làm nổi bật vùng tương ứng; nhấn vùng trên ảnh hoặc checkbox để
+   chọn/bỏ chọn. Nhấn **Xem ảnh sau khi che**, so sánh **Ảnh gốc / Sau khi che**,
+   rồi chủ động nhấn **Tải ảnh đã che**. Không có tự che hoặc tự tải sau khi quét.
 5. Tắt Email trong **Dữ liệu nhạy cảm**, nhập lại ảnh: không trả EMAIL.
 6. Thêm Regex `NV-[0-9]{6}` và Keyword `CONFIDENTIAL`, nhập ảnh `custom.png` để thử.
-7. Chọn **Quét thủ công** trong Cài đặt nếu muốn tự bấm **Kiểm tra ảnh** sau khi nhập.
+7. Menu **⋯** trên ảnh có **Quét lại** và **Đánh dấu thủ công**. Nhập tọa độ nằm trong
+   **Tùy chọn nâng cao**. Nếu scan lỗi, dùng **Thử lại** hoặc **Đánh dấu thủ công**.
+   Cấu hình `manual` cũ được chuyển về auto, không còn chặn lần quét đầu tiên.
 
 Nút **Ảnh mẫu demo** của Phase 1 được giữ nguyên và ghi rõ Mock Mode. Nó không gọi
 OCR, không chạy custom rules và không được áp kết quả cho ảnh upload/camera.
@@ -87,7 +90,10 @@ vùng có thể chứa cả token để tránh cắt sót ký tự.
 
 **OCR confidence** là confidence do Tesseract trả về. **Điểm luật** là heuristic
 của detector, không phải xác suất nhận diện chính xác. Độ nhạy Thấp/Cân bằng/Cao
-lần lượt yêu cầu OCR confidence trung bình tối thiểu 60%/20%/0%. OCR ảnh mờ, chữ
+lần lượt thường yêu cầu OCR confidence trung bình tối thiểu 60%/20%/0%. Riêng tài khoản
+có nhãn rõ và chuỗi số hợp lệ vẫn được đề xuất ở Cân bằng/Cao khi confidence thấp;
+giữ nguyên confidence thật, giảm điểm luật và hiện cảnh báo kiểm tra lại. Chế độ
+Thấp vẫn lọc theo ngưỡng chặt. OCR ảnh mờ, chữ
 nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót.
 
 **Luôn kiểm tra toàn bộ ảnh trước khi chia sẻ. Không có cam kết an toàn 100%.**

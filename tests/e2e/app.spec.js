@@ -103,6 +103,7 @@ test("user upload gets real OCR, manual redaction and same-origin request", asyn
     "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
+  await page.locator("#advanced-tools>summary").click();
   await page.locator("details.coordinates summary").click();
   for (const [name, value] of Object.entries({
     x: "20",
@@ -123,6 +124,10 @@ test("user upload gets real OCR, manual redaction and same-origin request", asyn
 });
 
 test("drag and pointer marking use image coordinates", async ({ page }) => {
+  let scans = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/scan")) scans++;
+  });
   await page.goto("/#/scanner");
   const data = await readFile("frontend/icons/icon-192.png");
   const transfer = await page.evaluateHandle(
@@ -141,6 +146,7 @@ test("drag and pointer marking use image coordinates", async ({ page }) => {
   await expect(page.locator("#result-status")).toContainText(
     "Không phát hiện thông tin nhạy cảm",
   );
+  await page.locator("#advanced-tools>summary").click();
   await page.locator("#toggle-draw").click();
   const box = await page.locator("#preview-canvas").boundingBox();
   await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
@@ -151,6 +157,7 @@ test("drag and pointer marking use image coordinates", async ({ page }) => {
   await expect(page.locator(".finding-info strong")).toHaveText(
     "Vùng thủ công 1",
   );
+  expect(scans).toBe(1);
 });
 
 test("configuration persists, validates regex, escapes custom input, filters demo", async ({
@@ -184,18 +191,35 @@ test("configuration persists, validates regex, escapes custom input, filters dem
   await expect(page.locator('[data-finding="demo-email"]')).toHaveCount(0);
 });
 
-test("manual mode waits for action; reset restores defaults", async ({
+test("legacy manual preference still scans on import; reset restores defaults", async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("screenguard.config.v1"))
+      localStorage.setItem(
+        "screenguard.config.v1",
+        JSON.stringify({
+          types: {
+            email: true,
+            phone: true,
+            cccd: true,
+            student: true,
+            bank: true,
+            custom: true,
+          },
+          rules: [],
+          mode: "manual",
+          language: "vie+eng",
+          sensitivity: "balanced",
+        }),
+      );
+  });
   await page.goto("/#/settings");
-  await page.locator('[name="mode"][value="manual"]').check();
   await page.locator("#language").selectOption("vie");
   await page.locator("#sensitivity").selectOption("high");
   await page.goto("/#/scanner?demo");
-  await expect(page.locator("#result-status")).toHaveText(
-    "Ảnh mẫu · chưa kiểm tra",
-  );
-  await expect(page.locator("#finding-count")).toHaveText("0");
+  await expect(page.locator("#finding-count")).toHaveText("5");
+  await page.locator("#image-menu>summary").click();
   await page.locator("#start-scan").click();
   await expect(page.locator("#finding-count")).toHaveText("5");
   await page.locator('[data-nav="/settings"]').click();
@@ -233,6 +257,10 @@ test("camera capture is explicit and stream stops when dialog closes", async ({
   page,
   context,
 }) => {
+  let scans = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/scan")) scans++;
+  });
   await context.grantPermissions(["camera"]);
   await page.goto("/#/scanner");
   await page.locator("#open-camera").click();
@@ -251,6 +279,7 @@ test("camera capture is explicit and stream stops when dialog closes", async ({
     "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
+  expect(scans).toBe(1);
 });
 
 test("camera denial has a useful fallback", async ({ page }) => {

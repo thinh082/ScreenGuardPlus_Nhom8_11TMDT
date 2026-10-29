@@ -40,7 +40,7 @@ export async function scanImage(
   if (!image?.width || !image?.height)
     throw new Error("Chưa có ảnh để kiểm tra.");
   if (fixtureId)
-    for (const percent of [10, 35, 70, 100]) {
+    for (let step = 0; step < 4; step++) {
       signal?.throwIfAborted();
       await new Promise((resolve, reject) => {
         const abort = () => {
@@ -54,11 +54,11 @@ export async function scanImage(
         signal?.addEventListener("abort", abort, { once: true });
       });
       signal?.throwIfAborted();
-      onProgress(percent);
+      onProgress(null, "Đang kiểm tra ảnh mẫu mô phỏng…");
     }
   if (fixtureId) return mockScan(fixtureId, config);
   signal?.throwIfAborted();
-  onProgress(null, "Chuẩn bị ảnh gửi đến Python backend…");
+  onProgress(null, "Đang chuẩn bị ảnh…");
   const blob = await new Promise((resolve) =>
     image.toBlob(resolve, "image/png"),
   );
@@ -75,7 +75,7 @@ export async function scanImage(
   const abort = () => timeout.abort();
   signal?.addEventListener("abort", abort, { once: true });
   try {
-    onProgress(null, "Đang nhận diện văn bản…");
+    onProgress(null, "Đang đọc văn bản trong ảnh…");
     const response = await fetch("./api/scan", {
       method: "POST",
       body: form,
@@ -83,13 +83,22 @@ export async function scanImage(
       cache: "no-store",
     });
     const result = await response.json().catch(() => null);
+    if (!response.ok && result?.detail?.code === "OCR_UNAVAILABLE")
+      throw new Error(
+        "Bộ kiểm tra ảnh chưa sẵn sàng. Hãy thử lại hoặc đánh dấu thủ công.",
+      );
+    if (!response.ok && result?.detail?.code === "OCR_FAILED")
+      throw new Error(
+        "Chưa đọc được ảnh. Hãy thử ảnh rõ hơn hoặc đánh dấu thủ công.",
+      );
     if (!response.ok)
       throw new Error(
         typeof result?.detail === "string"
           ? result.detail
           : result?.detail?.message ||
-              "Không xử lý được ảnh. Hãy kiểm tra Python backend.",
+              "Chưa xử lý được ảnh. Hãy thử lại hoặc đánh dấu thủ công.",
       );
+    onProgress(null, "Đang kiểm tra dữ liệu nhạy cảm…");
     const types = {
       EMAIL: "email",
       PHONE: "phone",
@@ -105,7 +114,7 @@ export async function scanImage(
       !Array.isArray(result.findings) ||
       result.findings.length > 500
     )
-      throw new Error("Kết quả OCR không khớp kích thước ảnh. Hãy thử lại.");
+      throw new Error("Kết quả không khớp với ảnh. Hãy thử lại.");
     const ids = new Set();
     const findings = result.findings.map((f) => {
       const [x, y, right, bottom] = f.bbox || [];
@@ -130,7 +139,7 @@ export async function scanImage(
         f.ocr_confidence < 0 ||
         f.ocr_confidence > 1
       )
-        throw new Error("API trả về vùng nhận diện không hợp lệ.");
+        throw new Error("Chưa hiển thị được vùng nhận diện. Hãy thử lại.");
       ids.add(f.id);
       return {
         ...f,
@@ -140,17 +149,17 @@ export async function scanImage(
         box: { x, y, width: right - x, height: bottom - y },
       };
     });
-    onProgress(100, "Đã hoàn tất nhận diện.");
+    onProgress(null, "Đã kiểm tra xong.");
     return { ...result, status: "complete", source: "ocr", findings };
   } catch (error) {
     if (signal?.aborted) throw new DOMException("Đã hủy", "AbortError");
     if (timeout.signal.aborted)
       throw new Error(
-        "OCR quá thời gian chờ. Bạn vẫn có thể đánh dấu vùng thủ công.",
+        "Kiểm tra ảnh quá thời gian chờ. Bạn vẫn có thể đánh dấu vùng thủ công.",
       );
     if (error instanceof TypeError)
       throw new Error(
-        "Không kết nối được Python backend. Kiểm tra server/mạng; bạn vẫn có thể đánh dấu thủ công.",
+        "Không kết nối được bộ kiểm tra ảnh. Kiểm tra mạng rồi thử lại hoặc đánh dấu thủ công.",
       );
     throw error;
   } finally {

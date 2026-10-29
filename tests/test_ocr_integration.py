@@ -54,6 +54,16 @@ def test_real_vietnamese_language_pack():
     assert {f.type for f in result.findings}=={"CITIZEN_ID","BANK_ACCOUNT","STUDENT_ID"}
 
 
+@pytest.mark.parametrize('name',['bank','bank_vietnamese','bank_tight','bank_difficult'])
+def test_real_account_context_and_difficult_screenshots(name):
+    result=run_pipeline((DATA/f'{name}.png').read_bytes(),DetectionConfig(),'image/png')
+    assert len(result.findings)==1 and result.findings[0].type=='BANK_ACCOUNT'
+    finding=result.findings[0]
+    assert finding.bbox[2]>finding.bbox[0] and finding.bbox[3]>finding.bbox[1]
+    if finding.ocr_confidence<.20:
+        assert result.warnings and finding.score<=.75
+
+
 def test_exif_orientation_matches_browser_and_preserves_boxes():
     # Store pixels rotated left; EXIF orientation 6 turns them back to the visible screenshot.
     with Image.open(DATA/"all.png") as upright:

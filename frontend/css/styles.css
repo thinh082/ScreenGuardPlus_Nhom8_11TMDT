@@ -1,4 +1,231 @@
 @charset "UTF-8";
+#sidebar nav a {
+  font-size: 14px;
+}
+.import-actions {
+  display: flex;
+  gap: 9px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sample-button {
+  margin-top: 17px;
+}
+.sample-button .icon {
+  width: 14px;
+  height: 14px;
+}
+.dropzone p {
+  max-width: 410px;
+}
+.image-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.image-menu {
+  position: relative;
+}
+.image-menu > summary {
+  list-style: none;
+  border: 1px solid var(--border);
+}
+.image-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.image-menu-content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 7px);
+  z-index: 18;
+  width: 195px;
+  padding: 5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px #0002;
+}
+.image-menu-content > button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  width: 100%;
+  padding: 11px 10px;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.image-menu-content > button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.image-menu-content .icon {
+  width: 16px;
+  height: 16px;
+}
+.advanced-tools {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 15px 12px;
+}
+.advanced-tools > summary {
+  cursor: pointer;
+  display: list-item;
+  list-style-position: inside;
+}
+.advanced-tools[open] > .manual-tools {
+  margin: 12px 0;
+}
+.advanced-tools .coordinates {
+  padding: 0;
+}
+.advanced-tools[open] {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.scan-recovery {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 17px;
+}
+.scan-progress {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.scan-progress > div {
+  display: grid;
+  gap: 3px;
+}
+.scan-progress strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+.scan-progress span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.scan-progress progress {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.scan-spinner {
+  height: 20px;
+  width: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: scan-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.finding-row .finding-focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 2px;
+  background: transparent;
+  text-align: left;
+  border-radius: 6px;
+  line-height: 1.45;
+}
+.finding-row .finding-focus:hover {
+  color: var(--accent);
+}
+.finding-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 25px;
+  height: 28px;
+  color: var(--accent);
+}
+.finding-icon .icon {
+  width: 18px;
+  height: 18px;
+}
+.finding-row.is-active {
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding-inline: 5px;
+}
+.finding-row .finding-focus:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.finding-row .finding-info strong {
+  font-size: 13px;
+}
+.finding-row .finding-info > span {
+  font-size: 12px;
+}
+.finding-row .finding-info small {
+  font-size: 10px;
+}
+.sidebar nav a {
+  font-size: 14px;
+}
+.mode-symbol .icon {
+  color: var(--accent);
+}
+@keyframes scan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 760px) {
+  .import-actions .button {
+    font-size: 12px;
+    padding: 10px 13px;
+  }
+  .dropzone h2 {
+    max-width: 300px;
+    font-size: 20px;
+  }
+  .dropzone p {
+    max-width: 290px;
+    line-height: 1.6;
+    font-size: 11px;
+  }
+  .image-menu > summary {
+    padding: 6px;
+  }
+  .image-menu > summary .icon {
+    width: 16px;
+    height: 16px;
+  }
+  .advanced-tools {
+    padding: 0 12px 11px;
+    font-size: 10px;
+  }
+  .scan-recovery {
+    margin: 10px 12px;
+  }
+  .scan-progress > div {
+    max-width: 270px;
+  }
+  .finding-row .finding-info strong {
+    font-size: 13px;
+  }
+  .finding-row .finding-info > span {
+    font-size: 11px;
+  }
+  .finding-icon {
+    width: 22px;
+  }
+  .sidebar nav a {
+    font-size: 14px;
+  }
+  .redaction-actions .button {
+    font-size: 10px;
+    white-space: normal;
+  }
+}
 .type-copy {
   min-width: 0;
   flex: 1;

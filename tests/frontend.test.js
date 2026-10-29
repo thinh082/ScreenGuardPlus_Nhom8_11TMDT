@@ -66,7 +66,7 @@ test("real adapter sends multipart configuration to same-origin backend and neve
     globalThis.fetch = async () => {
       throw new TypeError("offline");
     };
-    await assert.rejects(scanImage(image, DEFAULT_CONFIG), /Python backend/);
+    await assert.rejects(scanImage(image, DEFAULT_CONFIG), /bộ kiểm tra ảnh/);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -106,6 +106,10 @@ test("configuration validates regex and limits; callers cannot mutate saved stat
   const invalid = structuredClone(DEFAULT_CONFIG);
   invalid.mode = "background";
   assert.throws(() => validateConfig(invalid));
+  assert.throws(() => updateDetectionConfig(invalid));
+  const legacy = structuredClone(DEFAULT_CONFIG);
+  legacy.mode = "manual";
+  assert.equal(updateDetectionConfig(legacy).config.mode, "auto");
 });
 test("dynamic user text is escaped before rendering", () => {
   assert.equal(

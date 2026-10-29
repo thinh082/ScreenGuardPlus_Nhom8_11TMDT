@@ -49,3 +49,31 @@ trang; các thao tác chính nằm trong khung nhìn ở desktop/điện thoại
 và nút xuất cố định; không tràn ngang trên điện thoại nhỏ/tablet. Tổng bộ E2E hiện có
 18 bài, gồm cả các bài OCR/PNG/camera/offline trước đó. Ảnh QA sáng/tối của các màn
 hình được tạo trong `test-results/ui-*.png` và không commit.
+
+## Phase 2.5 — Auto scan và ngữ cảnh tài khoản
+
+- **61 Python + 6 JavaScript + 22 Playwright = 89 kiểm thử đạt**, không có bài skip
+  trên môi trường có Tesseract eng/vie này. Các bài OCR chạy engine thật trên ảnh hư cấu.
+- Upload, kéo thả và camera gọi API đúng một lần khi nhận ảnh hợp lệ. Cấu hình manual
+  cũ được chuyển sang auto. Quét lại chỉ ở menu ảnh; busy chặn gọi trùng.
+- Kiểm thử giữ response OCR thật của ảnh cũ, cố ý bỏ qua AbortSignal và trả trễ sau
+  khi đã đổi ảnh: UI vẫn giữ kết quả ảnh mới. Không tự che hoặc tải ảnh sau scan.
+- Danh sách → highlight ảnh; click bbox → đổi checkbox; focus bàn phím được giữ khi
+  render lại. PNG so sánh pixel xác nhận tài khoản bị bỏ chọn giữ nguyên nội dung.
+- Lỗi 503 có Retry và Manual Mask hoạt động; quét lại giữ vùng thủ công.
+- Mẫu all.png dùng Account number: engine thật trả đủ Email, Phone, Student ID,
+  Citizen ID và Bank Account. Thêm ảnh tiếng Việt, sát nhãn và chữ nhỏ/xám/hơi mờ.
+- Trên ảnh sát nhãn, Tesseract đọc đúng chuỗi nhưng confidence chỉ 3% trên máy này.
+  Ngưỡng mặc định trước đây loại vùng đó. Nay ngữ cảnh tài khoản rõ cho phép đề xuất
+  ở Cân bằng/Cao, giữ nguyên confidence, giảm score và hiện warning; Low vẫn lọc chặt.
+
+File chính: `frontend/js/pages/scanner.js`, `frontend/js/components/scanner-view.js`,
+`frontend/js/services/scanner-service.js`, `config-service.js`, CSS scanner; setting
+chỉ sửa phần mode liên quan auto. Detector/pipeline, generator và ảnh mẫu, unit và
+integration tests có regression tương ứng. Service worker v4 giữ allowlist app shell.
+
+Giới hạn: không có ảnh gốc bị bỏ sót ngoài repo để đối chiếu; kết quả được xác minh
+trên bộ ảnh hư cấu kèm dự án. OCR mờ hoặc sai ký tự vẫn có thể bỏ sót. Nếu label và số
+cùng một token, box có thể chứa cả label để tránh che sót. Hủy fetch bỏ kết quả cũ
+trên UI; tác vụ Tesseract đã khởi chạy vẫn chịu timeout backend, không dừng ngay.
+Không có theo dõi nền, thư mục toàn hệ thống hoặc ứng dụng khác.

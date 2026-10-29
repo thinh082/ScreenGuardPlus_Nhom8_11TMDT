@@ -24,6 +24,10 @@ def ocr(*lines, confidence=.95):
     ("SV20260001","student"),("MSSV: 20260001","student"),("Mã sinh viên: 22DH12345","student"),
     ("CCCD: 000000000000","cccd"),("Căn cước công dân: 000 000 000 000","cccd"),
     ("STK: 111111111111","bank"),("Số tài khoản: 0900000000","bank"),
+    ("Account number: 111111111111","bank"),("Bank account: 111111111111","bank"),
+    ("Tài khoản ngân hàng: 111111111111","bank"),("Tài khoản: 111111111111","bank"),
+    ("AccountNumber111111111111","bank"),("Account number111111111111","bank"),
+    ("STK111111111111","bank"),
 ])
 def test_types_and_context(line,kind):
     findings=detect_sensitive_text(ocr(line),DetectionConfig())
@@ -59,6 +63,16 @@ def test_nearest_trailing_context_and_next_label_are_distinguished():
 
 def test_numbers_without_context_are_not_ids_or_bank_accounts():
     assert detect_sensitive_text(ocr("Order: 123456789012","Reference: 111111111111","Total: 20260001"),DetectionConfig())==[]
+    assert detect_sensitive_text(ocr('ABC0900000000','AB111111111111'),DetectionConfig())==[]
+
+
+def test_low_confidence_account_is_reviewable_with_clear_context_only():
+    result=ocr('Account number: 111111111111',confidence=.03)
+    finding=detect_sensitive_text(result,DetectionConfig())[0]
+    assert finding.type=='bank' and finding.ocr_confidence==.03 and finding.score<=.75
+    assert detect_sensitive_text(result,DetectionConfig(sensitivity='high'))[0].score<=.75
+    assert detect_sensitive_text(result,DetectionConfig(sensitivity='low'))==[]
+    assert detect_sensitive_text(ocr('Reference: 111111111111',confidence=.03),DetectionConfig())==[]
 
 
 def test_label_on_previous_line_and_confidence_sensitivity():

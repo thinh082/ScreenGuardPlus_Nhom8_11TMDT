@@ -132,7 +132,8 @@ test("phone keeps import, result tabs and export actions in view without page sc
   await expect(page.locator("#mobile-finding-count")).toHaveText("5");
   await expect(page.locator("#scan-progress")).toBeHidden();
   await inViewport(page.locator("#redact-selected"), page);
-  await inViewport(page.locator("#toggle-draw"), page);
+  await inViewport(page.locator("#advanced-tools>summary"), page);
+  await expect(page.locator("#toggle-draw")).not.toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollHeight <= innerHeight + 1,
