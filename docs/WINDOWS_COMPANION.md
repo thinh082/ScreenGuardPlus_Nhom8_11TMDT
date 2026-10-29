@@ -19,7 +19,7 @@ Nếu đang chạy `npm start`/uvicorn ở cổng 8000, dừng server đó bằn
 Entrypoint companion khởi chạy **chính FastAPI/PWA hiện có** cùng agent trong một
 tiến trình, không cần chạy thêm backend. Không dùng `--reload` hoặc nhiều workers.
 Nếu dùng Python hệ thống đã cài dependencies thì chạy `python -m desktop_agent.main`.
-PWA đã mở từ phase trước cần tải lại để nhận app shell v6 sau khi service worker
+PWA đã mở từ phase trước cần tải lại để nhận app shell v7 sau khi service worker
 cập nhật; không tự tải lại lúc người dùng đang chỉnh ảnh.
 
 1. Mở `http://127.0.0.1:8000/#/settings`.
@@ -80,7 +80,7 @@ của Windows. `--settings-file` có thể dùng để tách riêng consent/conf
   text hoặc PII. Preview findings vẫn được mask. Toast chỉ có số lượng và lời nhắc.
 - API nội bộ chỉ nhận loopback với Host hợp lệ; kiểm tra Origin và Fetch Metadata,
   cookie HttpOnly/SameSite Strict cùng CSRF header. Không mở CORS. Tất cả API
-  `no-store`, service worker chỉ cache allowlist shell v6.
+  `no-store`, service worker chỉ cache allowlist shell v7.
 - Entrypoint bind cố định `127.0.0.1`, tắt proxy headers và access log; không ghi
   exception, tên file, OCR text hoặc PII vào log. Không expose port qua LAN/proxy.
   Cơ chế này chống request web/network trái phép; không bảo vệ khỏi malware chạy

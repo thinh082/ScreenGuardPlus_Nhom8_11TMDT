@@ -123,5 +123,10 @@ document.querySelector("#close-install").onclick = () =>
   document.querySelector("#install-dialog").close();
 if ("serviceWorker" in navigator && isSecureContext)
   navigator.serviceWorker
-    .register("./service-worker.js")
+    .register("./service-worker.js", { updateViaCache: "none" })
+    .then((registration) => {
+      const update = () => registration.update().catch(() => {});
+      window.addEventListener("focus", update);
+      window.addEventListener("online", update);
+    })
     .catch(() => toast("Chưa bật được chế độ ngoại tuyến.", true));

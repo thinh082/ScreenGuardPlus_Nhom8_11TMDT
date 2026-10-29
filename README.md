@@ -148,7 +148,8 @@ nhỏ, tài liệu nhiều cột hoặc chữ viết tay có thể sai/bỏ sót
 - Chỉ lưu detection/settings và lựa chọn giao diện trong localStorage. **Xóa ảnh**, đổi trang hoặc reload
   giải phóng ảnh/kết quả trên UI. Camera chỉ mở khi người dùng chọn và dừng khi đóng.
 - Giữ nguyên manifest, standalone, icon 192/512, luồng cài đặt và offline shell.
-  Service worker v6 chỉ cache allowlist tài nguyên tĩnh; không cache API, ảnh hoặc PII.
+  Service worker v7 dùng bản mới từ server khi online, fallback allowlist tĩnh khi
+  offline; không cache API, ảnh hoặc PII.
   Offline vẫn dùng UI/demo/đánh dấu/che/tải PNG; **OCR thật cần kết nối backend**.
 - Service worker và camera cần HTTPS hoặc localhost. Companion cố định loopback;
   không expose cổng qua LAN hoặc proxy. Chỉ PWA upload thông thường có thể dùng

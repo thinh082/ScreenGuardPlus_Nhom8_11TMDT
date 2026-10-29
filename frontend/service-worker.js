@@ -1,5 +1,5 @@
 // An explicit, immutable app-shell allowlist. Never cache uploads, API responses or findings.
-const CACHE = "screenguard-shell-v6";
+const CACHE = "screenguard-shell-v7";
 const SHELL = [
   "./",
   "./index.html",
@@ -38,18 +38,13 @@ self.addEventListener("install", (event) => {
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter(
-              (key) => key.startsWith("screenguard-shell-") && key !== CACHE,
-            )
-            .map((key) => caches.delete(key)),
-        ),
-      )
-      .then(() => self.clients.claim()),
+    (async () => {
+      const old = (await caches.keys()).filter(
+        (key) => key.startsWith("screenguard-shell-") && key !== CACHE,
+      );
+      await Promise.all(old.map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })(),
   );
 });
 self.addEventListener("fetch", (event) => {
@@ -62,11 +57,16 @@ self.addEventListener("fetch", (event) => {
   )
     return;
   event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(event.request);
-      if (cached) return cached;
-      // Only precached shell assets may be fetched here. No runtime cache writes.
-      return fetch(event.request);
-    }),
+    (async () => {
+      // Serve current code whenever the local server is available. Cache is an
+      // offline fallback, not a reason to pin an installed PWA to an old UI.
+      let response;
+      try {
+        response = await fetch(event.request, { cache: "no-store" });
+        if (response.ok) return response;
+      } catch {}
+      const cached = await (await caches.open(CACHE)).match(event.request);
+      return cached || response || Response.error();
+    })(),
   );
 });

@@ -162,3 +162,14 @@ Backend và PWA cũ vẫn hoạt động khi không có companion. Không có fi
 thông báo Windows, vì Computer Use native pipe không khả dụng. Toàn bộ pipeline
 file mới → OCR → toast native đã được xác minh độc lập; thao tác phần cứng/desktop
 không được báo là pass. [Ma trận TC01–TC10 và cách chạy](WINDOWS_COMPANION.md).
+
+## Sửa PWA giữ giao diện cũ sau Phase 4
+
+Server 8000 đã chạy companion và trả về Settings mới, nhưng PWA cũ còn giữ module
+Settings trong cache. Shell v7 ưu tiên network khi online, giữ cache tĩnh làm
+fallback offline; registration bỏ HTTP cache khi kiểm tra worker, kiểm tra lại lúc
+focus/online. Không tự reload ảnh đang chỉnh. PWA đã mở cần Ctrl+Shift+R một lần.
+
+Hai bài E2E mới dựng worker legacy v5: cập nhật rồi reload hiện mục Windows mà
+không xóa site data; cập nhật trong Scanner giữ nguyên ảnh đang review. Hai bài này
+và ba bài responsive/theme đều đạt. Kiểm thử offline shell cũng được giữ lại.
