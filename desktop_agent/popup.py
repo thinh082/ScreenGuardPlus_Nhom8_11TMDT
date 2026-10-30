@@ -22,18 +22,24 @@ def popup_main(commands, events, base_url):
 
         import tkinter as tk
         import webbrowser
+
         def emit(kind, value):
-            try: events.put_nowait((kind, value))
+            try:
+                events.put_nowait((kind, value))
             except queue.Full:
-                try: events.get_nowait(); events.put_nowait((kind, value))
-                except (queue.Empty, queue.Full): pass
+                try:
+                    events.get_nowait()
+                    events.put_nowait((kind, value))
+                except (queue.Empty, queue.Full):
+                    pass
+
         root = tk.Tk()
         root.withdraw()
-        root.title("ScreenGuard+ — Cảnh Báo Bảo Mật DLP")
-        root.configure(bg="#0b0f19")
+        root.title("ScreenGuard+ — Cảnh Báo Bảo Mật")
+        root.configure(bg="#0B1422")
         root.resizable(False, False)
         root.attributes("-topmost", True)
-        
+
         try:
             from core.resources import get_icon_path
             ico = get_icon_path("app.ico")
@@ -42,63 +48,16 @@ def popup_main(commands, events, base_url):
         except Exception:
             pass
 
-        width, height = 540, 410
-        root.geometry(f"{width}x{height}+{max(0,(root.winfo_screenwidth()-width)//2)}+{max(0,(root.winfo_screenheight()-height)//2)}")
+        width, height = 460, 295
+        sw = root.winfo_screenwidth()
+        sh = root.winfo_screenheight()
+        x = max(0, (sw - width) // 2)
+        y = max(0, (sh - height) // 2)
+        root.geometry(f"{width}x{height}+{x}+{y}")
 
-        # Red danger line at the top
-        top_stripe = tk.Frame(root, bg="#ef4444", height=4)
-        top_stripe.pack(fill="x")
-
-        frame = tk.Frame(root, bg="#0b0f19", padx=28, pady=20)
-        frame.pack(fill="both", expand=True)
-
-        # Danger Badge
-        badge_frame = tk.Frame(frame, bg="#311317", highlightthickness=1, highlightbackground="#991b1b", padx=10, pady=3)
-        badge_frame.pack(anchor="w")
-        tk.Label(
-            badge_frame,
-            text="🛡️ ⚠️ CẢNH BÁO BẢO MẬT — DLP SECURITY ALERT",
-            font=("Segoe UI", 9, "bold"),
-            fg="#f87171",
-            bg="#311317"
-        ).pack()
-
-        # Dynamic Title
-        title = tk.Label(
-            frame,
-            text="Phát hiện thông tin nhạy cảm trong Screenshot!",
-            font=("Segoe UI", 16, "bold"),
-            fg="#ffffff",
-            bg="#0b0f19",
-            wraplength=480,
-            justify="left"
-        )
-        title.pack(anchor="w", pady=(12, 6))
-
-        # Description
-        desc = tk.Label(
-            frame,
-            text="Ảnh chụp màn hình vừa tạo có chứa dữ liệu nguy cấp (Mật khẩu, Token, Khóa 2FA hoặc CCCD/SĐT).",
-            font=("Segoe UI", 9),
-            fg="#cbd5e1",
-            bg="#0b0f19",
-            wraplength=480,
-            justify="left"
-        )
-        desc.pack(anchor="w")
-
-        # Warning Alert Box
-        warn_box = tk.Frame(frame, bg="#18181b", highlightthickness=1, highlightbackground="#7f1d1d", padx=14, pady=10)
-        warn_box.pack(fill="x", pady=(12, 14))
-        tk.Label(
-            warn_box,
-            text="⛔ NGUY CƠ RÒ RỈ DỮ LIỆU: Tuyệt đối KHÔNG chia sẻ ảnh này lên chat, mạng xã hội hoặc ticket khi chưa che kín thông tin bí mật!",
-            font=("Segoe UI", 9, "bold"),
-            fg="#fca5a5",
-            bg="#18181b",
-            wraplength=450,
-            justify="left"
-        ).pack(anchor="w")
+        # Outer border frame
+        outer = tk.Frame(root, bg="#0B1422", highlightthickness=1, highlightbackground="#26364A")
+        outer.pack(fill="both", expand=True)
 
         current = {"key": None, "expires": 0}
 
@@ -113,51 +72,176 @@ def popup_main(commands, events, base_url):
                 webbrowser.open(f"{base_url}/#/scanner?review={key}")
             dismiss()
 
-        # Action Buttons
-        actions = tk.Frame(frame, bg="#0b0f19")
-        actions.pack(fill="x", pady=(2, 12))
+        # --- HEADER ---
+        header = tk.Frame(outer, bg="#0B1422", padx=20, pady=12)
+        header.pack(fill="x")
+
+        header_left = tk.Frame(header, bg="#0B1422")
+        header_left.pack(side="left")
+
+        # Vector shield canvas (clean Security Red graphic, no emoji)
+        shield = tk.Canvas(header_left, width=16, height=18, bg="#0B1422", highlightthickness=0)
+        shield.pack(side="left", padx=(0, 8))
+        shield.create_polygon(
+            1, 2, 15, 2, 15, 9, 8, 16, 1, 9,
+            fill="#EF4444", outline="#F87171", width=1
+        )
+        shield.create_line(5, 8, 8, 11, 12, 6, fill="#0B1422", width=1.5)
+
+        app_title = tk.Label(
+            header_left,
+            text="ScreenGuard+",
+            font=("Segoe UI", 10, "bold"),
+            fg="#F8FAFC",
+            bg="#0B1422"
+        )
+        app_title.pack(side="left")
+
+        # Soft badge pill
+        badge_frame = tk.Frame(header_left, bg="#301D25", highlightthickness=1, highlightbackground="#4C1D24", padx=6, pady=1)
+        badge_frame.pack(side="left", padx=(10, 0))
+        badge_label = tk.Label(
+            badge_frame,
+            text="Cảnh báo",
+            font=("Segoe UI", 8, "bold"),
+            fg="#F87171",
+            bg="#301D25"
+        )
+        badge_label.pack()
+
+        # Close button '✕'
+        btn_close_x = tk.Label(
+            header,
+            text="✕",
+            font=("Segoe UI", 10),
+            fg="#94A3B8",
+            bg="#0B1422",
+            cursor="hand2",
+            padx=4,
+            pady=0
+        )
+        btn_close_x.pack(side="right")
+        btn_close_x.bind("<Enter>", lambda _: btn_close_x.configure(fg="#F8FAFC"))
+        btn_close_x.bind("<Leave>", lambda _: btn_close_x.configure(fg="#94A3B8"))
+        btn_close_x.bind("<Button-1>", lambda _: dismiss())
+
+        # Divider
+        div = tk.Frame(outer, bg="#1E293B", height=1)
+        div.pack(fill="x", padx=20)
+
+        # --- MAIN BODY ---
+        body = tk.Frame(outer, bg="#0B1422", padx=20, pady=12)
+        body.pack(fill="x")
+
+        title_label = tk.Label(
+            body,
+            text="Phát hiện dữ liệu nhạy cảm",
+            font=("Segoe UI", 13, "bold"),
+            fg="#F8FAFC",
+            bg="#0B1422",
+            anchor="w"
+        )
+        title_label.pack(fill="x")
+
+        subtitle = tk.Label(
+            body,
+            text="Ảnh chụp màn hình vừa tạo có thông tin cần kiểm tra trước khi chia sẻ.",
+            font=("Segoe UI", 9),
+            fg="#94A3B8",
+            bg="#0B1422",
+            wraplength=415,
+            justify="left",
+            anchor="w"
+        )
+        subtitle.pack(fill="x", pady=(3, 8))
+
+        # Card container for count and chips
+        card = tk.Frame(body, bg="#142235", highlightthickness=1, highlightbackground="#26364A", padx=12, pady=8)
+        card.pack(fill="x")
+
+        count_label = tk.Label(
+            card,
+            text="Đã phát hiện 1 vùng cần bảo vệ:",
+            font=("Segoe UI", 9, "bold"),
+            fg="#F87171",
+            bg="#142235",
+            anchor="w"
+        )
+        count_label.pack(fill="x")
+
+        # Dynamic Chips Row
+        chips_row = tk.Frame(card, bg="#142235", pady=3)
+        chips_row.pack(fill="x")
+
+        # Security advice row
+        advice_row = tk.Frame(body, bg="#0B1422", pady=8)
+        advice_row.pack(fill="x")
+
+        dot = tk.Canvas(advice_row, width=6, height=6, bg="#0B1422", highlightthickness=0)
+        dot.pack(side="left", padx=(0, 6))
+        dot.create_oval(1, 1, 5, 5, fill="#EF4444", outline="#EF4444")
+
+        tk.Label(
+            advice_row,
+            text="Nên kiểm tra và che thông tin trước khi chia sẻ ảnh.",
+            font=("Segoe UI", 8),
+            fg="#94A3B8",
+            bg="#0B1422"
+        ).pack(side="left")
+
+        # --- ACTION BUTTONS ---
+        actions = tk.Frame(outer, bg="#0B1422", padx=20, pady=4)
+        actions.pack(fill="x", pady=(2, 8))
 
         primary = tk.Button(
             actions,
-            text="🛡️ Xem và che ảnh ngay",
-            command=review,
-            bg="#dc2626",
-            fg="#ffffff",
-            activebackground="#b91c1c",
-            activeforeground="#ffffff",
-            font=("Segoe UI", 11, "bold"),
+            text="Xem & che ngay",
+            font=("Segoe UI", 10, "bold"),
+            bg="#DC2626",
+            fg="#FFFFFF",
+            activebackground="#B91C1C",
+            activeforeground="#FFFFFF",
             relief="flat",
-            padx=20,
-            pady=9,
-            cursor="hand2"
+            cursor="hand2",
+            padx=18,
+            pady=6,
+            command=review
         )
         primary.pack(side="left")
+        primary.bind("<Enter>", lambda _: primary.configure(bg="#EF4444"))
+        primary.bind("<Leave>", lambda _: primary.configure(bg="#DC2626"))
 
-        btn_close = tk.Button(
+        secondary = tk.Button(
             actions,
-            text="Bỏ qua",
-            command=dismiss,
-            bg="#1f2937",
-            fg="#9ca3af",
-            activebackground="#374151",
-            activeforeground="#ffffff",
-            font=("Segoe UI", 10),
+            text="Để sau",
+            font=("Segoe UI", 9),
+            bg="#142235",
+            fg="#94A3B8",
+            activebackground="#1E293B",
+            activeforeground="#F8FAFC",
             relief="flat",
+            cursor="hand2",
             padx=16,
-            pady=9,
-            cursor="hand2"
+            pady=6,
+            highlightthickness=1,
+            highlightbackground="#26364A",
+            command=dismiss
         )
-        btn_close.pack(side="left", padx=12)
+        secondary.pack(side="left", padx=(10, 0))
+        secondary.bind("<Enter>", lambda _: secondary.configure(bg="#1E293B", fg="#F8FAFC"))
+        secondary.bind("<Leave>", lambda _: secondary.configure(bg="#142235", fg="#94A3B8"))
 
-        footer = tk.Label(
-            frame,
-            text="Ảnh chưa được che. Phiên review bảo mật được mã hóa và tự hủy sau 10 phút.",
+        # --- FOOTER ---
+        footer = tk.Frame(outer, bg="#0B1422", padx=20, pady=2)
+        footer.pack(fill="x", pady=(0, 10))
+
+        tk.Label(
+            footer,
+            text="Phiên xem lại có hiệu lực tối đa 10 phút.",
             font=("Segoe UI", 8),
-            fg="#64748b",
-            bg="#0b0f19",
-            justify="left"
-        )
-        footer.pack(anchor="w")
+            fg="#64748B",
+            bg="#0B1422"
+        ).pack(side="left")
 
         root.protocol("WM_DELETE_WINDOW", dismiss)
         root.bind("<Escape>", lambda _: dismiss())
@@ -179,22 +263,57 @@ def popup_main(commands, events, base_url):
                     elif command[0] == "discard" and command[1] == current["key"]:
                         dismiss()
                     elif command[0] == "show":
-                        _, count, key, expires = command
+                        count = command[1]
+                        key = command[2]
+                        expires = command[3]
+                        categories = command[4] if len(command) > 4 else None
+                        max_risk = command[5] if len(command) > 5 else "high"
+
                         if expires <= time.monotonic():
                             continue
                         current.update(key=key, expires=expires)
-                        title.config(text=f"Phát hiện {count} vùng thông tin nhạy cảm!")
-                        sw = root.winfo_screenwidth()
-                        sh = root.winfo_screenheight()
-                        x = max(0, (sw - width) // 2)
-                        y = max(0, (sh - height) // 2)
-                        root.geometry(f"{width}x{height}+{x}+{y}")
+
+                        # Update count text
+                        v_text = f"Đã phát hiện {count} vùng cần bảo vệ:" if count > 1 else "Đã phát hiện 1 vùng cần bảo vệ:"
+                        count_label.config(text=v_text, fg="#F87171")
+
+                        # Update risk badge
+                        if max_risk == "critical":
+                            badge_frame.config(bg="#301D25", highlightbackground="#4C1D24")
+                            badge_label.config(text="Rủi ro cao", fg="#F87171", bg="#301D25")
+                        else:
+                            badge_frame.config(bg="#301D25", highlightbackground="#4C1D24")
+                            badge_label.config(text="Cảnh báo", fg="#FCA5A5", bg="#301D25")
+
+                        # Populate chips
+                        for child in chips_row.winfo_children():
+                            child.destroy()
+                        cats_to_show = categories if categories else ["Thông tin nhạy cảm"]
+                        for cat in cats_to_show[:4]:
+                            chip = tk.Frame(chips_row, bg="#0B1422", highlightthickness=1, highlightbackground="#3E2028", padx=7, pady=2)
+                            chip.pack(side="left", padx=(0, 6))
+                            tk.Label(
+                                chip,
+                                text=cat,
+                                font=("Segoe UI", 8),
+                                fg="#F1F5F9",
+                                bg="#0B1422"
+                            ).pack()
+
+                        # Recalculate screen center
+                        c_sw = root.winfo_screenwidth()
+                        c_sh = root.winfo_screenheight()
+                        c_x = max(0, (c_sw - width) // 2)
+                        c_y = max(0, (c_sh - height) // 2)
+                        root.geometry(f"{width}x{height}+{c_x}+{c_y}")
+
                         root.deiconify()
                         root.attributes("-topmost", True)
                         root.lift()
                         root.focus_force()
                         primary.focus_set()
                         root.bell()
+
                         try:
                             import ctypes
                             u32 = ctypes.windll.user32
@@ -214,6 +333,7 @@ def popup_main(commands, events, base_url):
                                 u32.SetForegroundWindow(hwnd)
                         except Exception:
                             pass
+
                         root.update()
                         emit("visible", True)
             except queue.Empty:
@@ -277,11 +397,11 @@ class DesktopPopup:
             try: self.commands.put_nowait(value)
             except (queue.Full, OSError): self.failed = True
 
-    def show(self, count, key, ttl=600):
+    def show(self, count, key, ttl=600, *, categories=None, max_risk="high"):
         if not isinstance(count, int) or not 1 <= count <= 500 or not re.fullmatch(r"[A-Za-z0-9_-]{40,64}", key):
             return False
         self.start()
-        self._send(("show", count, key, time.monotonic()+ttl))
+        self._send(("show", count, key, time.monotonic() + ttl, categories, max_risk))
         return not self.failed
 
     def discard(self, key): self._send(("discard", key))

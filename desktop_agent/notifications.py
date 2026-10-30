@@ -39,17 +39,18 @@ class WindowsNotifications:
             winreg.SetValueEx(key, "IconUri", 0, winreg.REG_SZ, str(Path(__file__).resolve().parents[1] / "frontend/icons/icon-192.png"))
         self._toaster = WindowsToaster(app_id)
 
-    def notify(self, count: int, review_id: str) -> bool:
+    def notify(self, count: int, review_id: str, *, categories=None, max_risk="high") -> bool:
         # The persistent warning is independent of toast permissions / Do Not Disturb.
         if self.popup_enabled:
-            self.popup.show(count, review_id)
+            self.popup.show(count, review_id, categories=categories, max_risk=max_risk)
         try:
             from windows_toasts import Toast
             if self._toaster is None:
                 self._prepare()
+            cat_summary = f" ({', '.join(categories[:3])})" if categories else ""
             toast = Toast([
                 "ScreenGuard+",
-                f"Phát hiện {count} vùng có thể nhạy cảm trong screenshot.",
+                f"Phát hiện {count} vùng có thể nhạy cảm{cat_summary} trong screenshot.",
                 "Mở để kiểm tra và chọn vùng cần che.",
             ])
             # Protocol activation works even with the browser/PWA closed.
