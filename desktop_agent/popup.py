@@ -10,6 +10,16 @@ import time
 def popup_main(commands, events, base_url):
     # Tk owns the main thread of its own process, never an OCR/API thread.
     try:
+        if os.name == "nt":
+            try:
+                import ctypes
+                u32 = ctypes.windll.user32
+                h_def = u32.OpenDesktopW("Default", 0, False, 0x01FF)
+                if h_def:
+                    u32.SetThreadDesktop(h_def)
+            except Exception:
+                pass
+
         import tkinter as tk
         import webbrowser
         def emit(kind, value):
@@ -189,7 +199,8 @@ def popup_main(commands, events, base_url):
                             import ctypes
                             u32 = ctypes.windll.user32
                             k32 = ctypes.windll.kernel32
-                            hwnd = u32.GetParent(root.winfo_id()) or root.winfo_id()
+                            frame_val = root.wm_frame()
+                            hwnd = int(frame_val, 16) if str(frame_val).startswith("0x") else int(frame_val)
                             u32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040)
                             fore = u32.GetWindowThreadProcessId(u32.GetForegroundWindow(), None)
                             cur = k32.GetCurrentThreadId()
