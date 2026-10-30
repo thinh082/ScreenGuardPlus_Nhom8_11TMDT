@@ -48,6 +48,12 @@ GOOGLE_API_KEY_PATTERN = re.compile(
 BEARER_TOKEN_PATTERN = re.compile(
     r"(?i)\bBearer\s+(?P<token>[a-zA-Z0-9_@+/=\-\.]{25,})",
 )
+# 2FA/TOTP shared secrets, adapted from Antigravity's d26a262.
+# Require an explicit label; an arbitrary long word must not become a secret.
+TWO_FACTOR_SECRET_PATTERN = re.compile(
+    r"""(?i)(?<!\w)(?P<label>2[ \t]*fa|two[_ \t-]*factor(?:[_ \t-]*(?:secret|key))?|totp(?:[_ \t-]*(?:secret|key))?|otp[_ \t-]*(?:secret|key)|authenticator[_ \t-]*(?:secret|key)|m[aã][_ \t-]*2fa)\b[ \t]*(?:[:=-][ \t]*|[ \t]+)['"]?(?P<secret>[A-Z2-7]{16,64})(?![A-Z0-9_])""",
+)
+
 GENERIC_API_KEY_PATTERN = re.compile(
     r"""(?i)(?<![\w])['"]?(?:[a-z][a-z0-9]{1,24}[_-]){0,3}(?P<label>api[_\s-]*key|apikey|(?:secret|auth|access|refresh)[_\s-]*token|token|account[_\s-]*key|shared[_\s-]*access[_\s-]*key)['"]?\s*[:=]\s*['"]?(?P<secret>[a-zA-Z0-9_./+\-=]{12,})['"]?""",
 )
@@ -296,6 +302,24 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
                         score=0.92,
                     )
 
+        # 2FA Authenticator Secret Key / TOTP Key
+        if getattr(config.types, "api_key", True):
+            for match in TWO_FACTOR_SECRET_PATTERN.finditer(text):
+                value = match.group("secret")
+                # A labelled definition can contain long alphabetic words; it
+                # is not the same as a standalone/quoted shared-secret value.
+                if value.isalpha() and value.islower() and re.match(r"\s+[a-zA-Z]+\s+[a-zA-Z]+", text[match.end("secret"):]):
+                    continue
+                start, end = match.span("secret")
+                add_finding(
+                    idx,
+                    start,
+                    end,
+                    "api_key",
+                    "Mã khóa 2FA / TOTP Secret",
+                    risk="critical",
+                    score=0.95,
+                )
         # C. API Keys & Cloud Credentials
         if getattr(config.types, "api_key", True):
             # GitHub Token

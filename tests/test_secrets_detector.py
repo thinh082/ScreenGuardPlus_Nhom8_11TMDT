@@ -198,3 +198,4 @@ def test_application_prefixes_and_secret_type_toggles(text):
     assert any(f.type == "api_key" for f in detect_secrets(fake_ocr(text), config))
     config.types.api_key = False
     assert detect_secrets(fake_ocr(text), config) == []
+

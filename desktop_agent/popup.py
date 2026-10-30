@@ -19,18 +19,77 @@ def popup_main(commands, events, base_url):
                 except (queue.Empty, queue.Full): pass
         root = tk.Tk()
         root.withdraw()
-        root.title("ScreenGuard+ — Kiểm tra screenshot")
-        root.configure(bg="#f5f6f8")
+        root.title("ScreenGuard+ — Cảnh Báo Bảo Mật DLP")
+        root.configure(bg="#0b0f19")
         root.resizable(False, False)
         root.attributes("-topmost", True)
-        width, height = 540, 380
+        
+        try:
+            from core.resources import get_icon_path
+            ico = get_icon_path("app.ico")
+            if ico.is_file():
+                root.iconbitmap(str(ico))
+        except Exception:
+            pass
+
+        width, height = 540, 410
         root.geometry(f"{width}x{height}+{max(0,(root.winfo_screenwidth()-width)//2)}+{max(0,(root.winfo_screenheight()-height)//2)}")
-        frame = tk.Frame(root, bg="#f5f6f8", padx=30, pady=26)
+
+        # Red danger line at the top
+        top_stripe = tk.Frame(root, bg="#ef4444", height=4)
+        top_stripe.pack(fill="x")
+
+        frame = tk.Frame(root, bg="#0b0f19", padx=28, pady=20)
         frame.pack(fill="both", expand=True)
-        tk.Label(frame, text="SCREENGUARD+", bg="#f5f6f8", fg="#087b65", font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        title = tk.Label(frame, bg="#f5f6f8", fg="#262b35", font=("Segoe UI", 19, "bold"), wraplength=460, justify="left")
-        title.pack(anchor="w", pady=(15, 10))
-        tk.Label(frame, text="Kiểm tra và chọn vùng cần che trước khi chia sẻ.", bg="#f5f6f8", fg="#606b7b", font=("Segoe UI", 11), wraplength=460, justify="left").pack(anchor="w")
+
+        # Danger Badge
+        badge_frame = tk.Frame(frame, bg="#311317", highlightthickness=1, highlightbackground="#991b1b", padx=10, pady=3)
+        badge_frame.pack(anchor="w")
+        tk.Label(
+            badge_frame,
+            text="🛡️ ⚠️ CẢNH BÁO BẢO MẬT — DLP SECURITY ALERT",
+            font=("Segoe UI", 9, "bold"),
+            fg="#f87171",
+            bg="#311317"
+        ).pack()
+
+        # Dynamic Title
+        title = tk.Label(
+            frame,
+            text="Phát hiện thông tin nhạy cảm trong Screenshot!",
+            font=("Segoe UI", 16, "bold"),
+            fg="#ffffff",
+            bg="#0b0f19",
+            wraplength=480,
+            justify="left"
+        )
+        title.pack(anchor="w", pady=(12, 6))
+
+        # Description
+        desc = tk.Label(
+            frame,
+            text="Ảnh chụp màn hình vừa tạo có chứa dữ liệu nguy cấp (Mật khẩu, Token, Khóa 2FA hoặc CCCD/SĐT).",
+            font=("Segoe UI", 9),
+            fg="#cbd5e1",
+            bg="#0b0f19",
+            wraplength=480,
+            justify="left"
+        )
+        desc.pack(anchor="w")
+
+        # Warning Alert Box
+        warn_box = tk.Frame(frame, bg="#18181b", highlightthickness=1, highlightbackground="#7f1d1d", padx=14, pady=10)
+        warn_box.pack(fill="x", pady=(12, 14))
+        tk.Label(
+            warn_box,
+            text="⛔ NGUY CƠ RÒ RỈ DỮ LIỆU: Tuyệt đối KHÔNG chia sẻ ảnh này lên chat, mạng xã hội hoặc ticket khi chưa che kín thông tin bí mật!",
+            font=("Segoe UI", 9, "bold"),
+            fg="#fca5a5",
+            bg="#18181b",
+            wraplength=450,
+            justify="left"
+        ).pack(anchor="w")
+
         current = {"key": None, "expires": 0}
 
         def dismiss():
@@ -44,12 +103,52 @@ def popup_main(commands, events, base_url):
                 webbrowser.open(f"{base_url}/#/scanner?review={key}")
             dismiss()
 
-        actions = tk.Frame(frame, bg="#f5f6f8")
-        actions.pack(fill="x", pady=(24, 10))
-        primary = tk.Button(actions, text="Xem và che ảnh", command=review, bg="#087b65", fg="white", activebackground="#096c5a", activeforeground="white", font=("Segoe UI", 11, "bold"), relief="flat", padx=20, pady=10, cursor="hand2")
+        # Action Buttons
+        actions = tk.Frame(frame, bg="#0b0f19")
+        actions.pack(fill="x", pady=(2, 12))
+
+        primary = tk.Button(
+            actions,
+            text="🛡️ Xem và che ảnh ngay",
+            command=review,
+            bg="#dc2626",
+            fg="#ffffff",
+            activebackground="#b91c1c",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 11, "bold"),
+            relief="flat",
+            padx=20,
+            pady=9,
+            cursor="hand2"
+        )
         primary.pack(side="left")
-        tk.Button(actions, text="Đóng", command=dismiss, bg="#e9edf1", fg="#262b35", font=("Segoe UI", 11), relief="flat", padx=20, pady=10, cursor="hand2").pack(side="left", padx=12)
-        tk.Label(frame, text="Ảnh chưa được che. Các ảnh chờ nằm trong mục Thông báo.", bg="#f5f6f8", fg="#606b7b", font=("Segoe UI", 10), wraplength=460, justify="left").pack(anchor="w")
+
+        btn_close = tk.Button(
+            actions,
+            text="Bỏ qua",
+            command=dismiss,
+            bg="#1f2937",
+            fg="#9ca3af",
+            activebackground="#374151",
+            activeforeground="#ffffff",
+            font=("Segoe UI", 10),
+            relief="flat",
+            padx=16,
+            pady=9,
+            cursor="hand2"
+        )
+        btn_close.pack(side="left", padx=12)
+
+        footer = tk.Label(
+            frame,
+            text="Ảnh chưa được che. Phiên review bảo mật được mã hóa và tự hủy sau 10 phút.",
+            font=("Segoe UI", 8),
+            fg="#64748b",
+            bg="#0b0f19",
+            justify="left"
+        )
+        footer.pack(anchor="w")
+
         root.protocol("WM_DELETE_WINDOW", dismiss)
         root.bind("<Escape>", lambda _: dismiss())
         root.bind("<Return>", lambda _: review())
@@ -74,7 +173,7 @@ def popup_main(commands, events, base_url):
                         if expires <= time.monotonic():
                             continue
                         current.update(key=key, expires=expires)
-                        title.config(text=f"Screenshot có {count} vùng cần kiểm tra")
+                        title.config(text=f"Phát hiện {count} vùng thông tin nhạy cảm!")
                         root.deiconify()
                         root.lift()
                         root.focus_force()
@@ -159,6 +258,6 @@ class DesktopPopup:
             self.process.join(timeout=3)
             if self.process.is_alive():
                 self.process.terminate()
-                self.process.join(timeout=2)
-            self.commands.close()
-            self.events.close()
+            self.process = None
+        self.commands.close()
+        self.events.close()

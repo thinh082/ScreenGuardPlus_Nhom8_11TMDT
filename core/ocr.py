@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 import pytesseract
 
 from core.models import BoundingBox, OCRBlock, OCRLine, OCRResult, TokenSpan
-from core.validator import ImageValidationError, validate_image
+from core.validator import MAX_PIXELS, ImageValidationError, validate_image
 
 OCR_TIMEOUT = 25
 MAX_TOKENS = 20_000
@@ -115,13 +115,22 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
             rgb = Image.new("RGB", rgba.size, "white")
             rgb.paste(rgba, mask=rgba.getchannel("A"))
             width, height = rgb.size
+
+            # Adaptive upscaling for screen captures with small font/resolution
+            scale = 1.0
+            if (width < 1600 or height < 1200) and max(width, height) * 2 <= 4096 and width * height * 4 <= MAX_PIXELS:
+                scale = 2.0
+                ocr_img = rgb.resize((int(width * scale), int(height * scale)), Image.Resampling.LANCZOS)
+            else:
+                ocr_img = rgb
+
             pytesseract.pytesseract.tesseract_cmd = find_tesseract()
             directory = tessdata_directory()
             # pytesseract's Windows shlex preserves quotes in config paths. The engine
             # environment supports spaced paths reliably and is constant for this server.
             if directory:
                 os.environ.setdefault("TESSDATA_PREFIX", directory)
-            data = pytesseract.image_to_data(rgb, lang=selected_language, config="--oem 3 --psm 6",
+            data = pytesseract.image_to_data(ocr_img, lang=selected_language, config="--oem 3 --psm 6",
                                              output_type=pytesseract.Output.DICT, timeout=OCR_TIMEOUT)
         blocks, chars = [], 0
         for index, raw in enumerate(data["text"]):
@@ -129,9 +138,17 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
             confidence = float(data["conf"][index])
             if not text or confidence < 0:
                 continue
-            x, y = max(0, int(data["left"][index])), max(0, int(data["top"][index]))
-            right = min(width, x + int(data["width"][index]))
-            bottom = min(height, y + int(data["height"][index]))
+            raw_x, raw_y = data["left"][index], data["top"][index]
+            raw_w, raw_h = data["width"][index], data["height"][index]
+            if scale != 1.0:
+                x = max(0, int(round(raw_x / scale)))
+                y = max(0, int(round(raw_y / scale)))
+                right = min(width, int(round((raw_x + raw_w) / scale)))
+                bottom = min(height, int(round((raw_y + raw_h) / scale)))
+            else:
+                x, y = max(0, int(raw_x)), max(0, int(raw_y))
+                right = min(width, x + int(raw_w))
+                bottom = min(height, y + int(raw_h))
             if right <= x or bottom <= y:
                 continue
             chars += len(text)
@@ -141,6 +158,8 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
                                    box=BoundingBox(x=x, y=y, width=right-x, height=bottom-y),
                                    line_id=tuple(int(data[key][index]) for key in ("page_num", "block_num", "par_num", "line_num"))))
         lines = build_lines(blocks)
+        if not blocks or sum(b.confidence * len(b.text) for b in blocks) / max(1, sum(len(b.text) for b in blocks)) < .35:
+            warnings.append("OCR đọc chưa rõ; ảnh chữ viết tay hoặc mờ có thể bị bỏ sót. Hãy kiểm tra và đánh dấu thủ công.")
         return OCRResult(width=width, height=height, blocks=blocks, lines=lines,
                          text="\n".join(line.text for line in lines), language=selected_language, warnings=warnings)
     except pytesseract.TesseractNotFoundError as exc:
