@@ -20,7 +20,7 @@ export function dashboardPage(main) {
       : "Chưa kết nối";
     main.querySelector("#dashboard-languages").textContent =
       health.backend_available
-        ? `Tesseract · ${(health.languages || []).join(" / ") || "chưa có ngôn ngữ"}`
+        ? health.ocr_engine === "paddle" ? "PaddleOCR · kiểm tra model khi quét" : `Tesseract · ${(health.languages || []).join(" / ") || "chưa có ngôn ngữ"}`
         : "Kiểm tra Python backend";
   });
   return () => {

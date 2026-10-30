@@ -22,6 +22,22 @@ winget install --id UB-Mannheim.TesseractOCR --exact --accept-package-agreements
 ```
 
 Mở **http://127.0.0.1:8000**. API docs: **http://127.0.0.1:8000/docs**.
+
+### Thử PaddleOCR cho chữ viết tay
+
+PaddleOCR là bộ OCR mặc định, chạy trực tiếp bằng CPU. Cài trong PowerShell tại thư mục dự án:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-paddle.txt
+.\.venv\Scripts\python.exe -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Mở ứng dụng và tải ảnh cần thử. Lần đầu PaddleOCR có thể tải model từ Internet và
+khởi tạo chậm; ảnh được xử lý trên máy chạy backend. Khi PaddleOCR không khởi tạo
+hoặc xử lý được, ứng dụng thử lại bằng Tesseract và hiển thị cảnh báo. Muốn dùng
+Tesseract làm mặc định, dừng server, chạy `$env:SCREENGUARD_OCR_ENGINE = 'tesseract'` rồi khởi
+động lại. Chế độ PaddleOCR hiện không có giới hạn 25 giây như Tesseract. Tọa độ
+có thể bao cả dòng; luôn kiểm tra lại ảnh vì chữ viết tay có thể bị đọc sai hoặc bỏ sót.
 Nếu server Phase 1 vẫn đang chạy, dừng bằng Ctrl+C ở terminal đó và chạy lại lệnh
 uvicorn để nạp backend Phase 2. Nếu đã cài dependencies vào Python hiện tại, có thể
 chạy `npm start` hoặc `python -m uvicorn backend.main:app --port 8000 --reload`.

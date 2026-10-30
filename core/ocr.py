@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import threading
+import math
 
 from PIL import Image, ImageOps
 import pytesseract
@@ -102,7 +104,7 @@ def build_lines(blocks: list[OCRBlock]) -> list[OCRLine]:
     return lines
 
 
-def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
+def _extract_tesseract(image: bytes, language: str = "vie+eng") -> OCRResult:
     validate_image(image)
     status = get_ocr_status()
     if not status["ocr_available"]:
@@ -170,3 +172,84 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
         raise OCRProcessingError("OCR thất bại hoặc quá thời gian 25 giây. Hãy thử ảnh rõ hơn hoặc đánh dấu thủ công.") from exc
     except (OSError, ValueError) as exc:
         raise ImageValidationError("Không đọc được đầy đủ dữ liệu ảnh.") from exc
+
+
+_paddle_lock = threading.Lock()
+_paddle_models = {}
+
+
+def _paddle_result(image: bytes, language: str, pages) -> OCRResult:
+    """Convert PaddleOCR line polygons to conservative original-image boxes."""
+    with Image.open(BytesIO(image)) as source:
+        width, height = ImageOps.exif_transpose(source).size
+    blocks = []
+    chars = 0
+    for page in pages:
+        texts, scores, polygons = page["rec_texts"], page["rec_scores"], page["rec_polys"]
+        if not (len(texts) == len(scores) == len(polygons)):
+            raise OCRProcessingError("Kết quả PaddleOCR không hợp lệ.")
+        for text, score, polygon in zip(texts, scores, polygons):
+            text = str(text).strip()
+            if not text:
+                continue
+            points = [(float(point[0]), float(point[1])) for point in polygon]
+            if not points or not all(math.isfinite(v) for point in points for v in point):
+                raise OCRProcessingError("Tọa độ PaddleOCR không hợp lệ.")
+            x = max(0, math.floor(min(p[0] for p in points)))
+            y = max(0, math.floor(min(p[1] for p in points)))
+            right = min(width, math.ceil(max(p[0] for p in points)))
+            bottom = min(height, math.ceil(max(p[1] for p in points)))
+            if right <= x or bottom <= y:
+                continue
+            chars += len(text)
+            if len(blocks) >= MAX_TOKENS or chars > MAX_TEXT:
+                raise OCRProcessingError("Ảnh có quá nhiều văn bản. Hãy cắt thành vùng nhỏ hơn rồi kiểm tra lại.")
+            confidence = float(score)
+            if not math.isfinite(confidence):
+                raise OCRProcessingError("Độ tin cậy PaddleOCR không hợp lệ.")
+            blocks.append(OCRBlock(text=text, confidence=max(0, min(1, confidence)),
+                                   box=BoundingBox(x=x, y=y, width=right-x, height=bottom-y),
+                                   line_id=(1, 1, 1, len(blocks)+1)))
+    blocks.sort(key=lambda block: (block.box.y, block.box.x))
+    lines = build_lines(blocks)
+    warnings = ["Đang dùng PaddleOCR; vùng che có thể bao gồm cả dòng chữ. Hãy kiểm tra ảnh trước khi chia sẻ."]
+    if not blocks or sum(b.confidence * len(b.text) for b in blocks) / max(1, sum(len(b.text) for b in blocks)) < .35:
+        warnings.append("OCR đọc chưa rõ; chữ viết tay hoặc mờ có thể bị bỏ sót. Hãy kiểm tra và đánh dấu thủ công.")
+    return OCRResult(width=width, height=height, blocks=blocks, lines=lines,
+                     text="\n".join(line.text for line in lines), language=language, warnings=warnings)
+
+
+def _extract_paddle(image: bytes, language: str) -> OCRResult:
+    validate_image(image)
+    try:
+        import numpy as np
+        from paddleocr import PaddleOCR
+        with Image.open(BytesIO(image)) as source:
+            oriented = ImageOps.exif_transpose(source).convert("RGBA")
+            rgb = Image.new("RGB", oriented.size, "white")
+            rgb.paste(oriented, mask=oriented.getchannel("A"))
+            pixels = np.asarray(rgb)[:, :, ::-1].copy()
+        model_language = "en" if language == "eng" else "vi"
+        # Paddle's predictor and model initialization are not shared concurrently.
+        with _paddle_lock:
+            if model_language not in _paddle_models:
+                _paddle_models[model_language] = PaddleOCR(
+                    lang=model_language, device="cpu", use_doc_orientation_classify=False,
+                    use_doc_unwarping=False, use_textline_orientation=False)
+            pages = _paddle_models[model_language].predict(pixels)
+        return _paddle_result(image, language, pages)
+    except OCRProcessingError:
+        raise
+    except Exception as exc:
+        raise OCRUnavailableError("PaddleOCR chưa sẵn sàng hoặc xử lý thất bại; kiểm tra cài đặt và model.") from exc
+
+
+def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
+    if os.environ.get("SCREENGUARD_OCR_ENGINE", "paddle").lower() != "paddle":
+        return _extract_tesseract(image, language)
+    try:
+        return _extract_paddle(image, language)
+    except OCRUnavailableError:
+        result = _extract_tesseract(image, language)
+        result.warnings.insert(0, "PaddleOCR không sẵn sàng; đang dùng Tesseract dự phòng.")
+        return result

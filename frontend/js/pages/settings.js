@@ -43,7 +43,7 @@ export function settingsPage(main) {
       const el = main.querySelector("#settings-ocr");
       if (!disposed && el)
         el.textContent = health.ocr_available
-          ? `Sẵn sàng · ${(health.languages || []).join(" / ")}`
+          ? health.ocr_engine === "paddle" ? "PaddleOCR · kiểm tra model khi quét" : `Sẵn sàng · ${(health.languages || []).join(" / ")}`
           : "Chưa kết nối";
     });
     const save = () => {

@@ -1,4 +1,6 @@
 import asyncio
+import importlib.util
+import os
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.concurrency import run_in_threadpool
@@ -23,11 +25,17 @@ scan_slots = asyncio.Semaphore(2)
 
 @router.get("/health")
 def health():
+    ocr_status = get_ocr_status()
+    paddle_installed = bool(importlib.util.find_spec("paddleocr") and importlib.util.find_spec("paddle"))
+    paddle_selected = os.environ.get("SCREENGUARD_OCR_ENGINE", "paddle").lower() == "paddle"
     return {
         "status": "ok",
         "backend_available": True,
         "phase": 5,
-        **get_ocr_status(),
+        **ocr_status,
+        "ocr_available": ocr_status["ocr_available"] or (paddle_selected and paddle_installed),
+        "ocr_engine": "paddle" if paddle_selected and paddle_installed else "tesseract",
+        "paddle_installed": paddle_installed,
         "detector_available": True,
         "secrets_detector_available": True,
         "policy_enforcement": True,
