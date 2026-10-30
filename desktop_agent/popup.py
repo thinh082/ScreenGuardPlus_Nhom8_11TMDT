@@ -79,12 +79,12 @@ def popup_main(commands, events, base_url):
         header_left = tk.Frame(header, bg="#0B1422")
         header_left.pack(side="left")
 
-        # Vector shield canvas (clean Teal graphic, no emoji)
+        # Vector shield canvas (clean Security Red graphic, no emoji)
         shield = tk.Canvas(header_left, width=16, height=18, bg="#0B1422", highlightthickness=0)
         shield.pack(side="left", padx=(0, 8))
         shield.create_polygon(
             1, 2, 15, 2, 15, 9, 8, 16, 1, 9,
-            fill="#14B8A6", outline="#2DD4BF", width=1
+            fill="#EF4444", outline="#F87171", width=1
         )
         shield.create_line(5, 8, 8, 11, 12, 6, fill="#0B1422", width=1.5)
 
@@ -98,14 +98,14 @@ def popup_main(commands, events, base_url):
         app_title.pack(side="left")
 
         # Soft badge pill
-        badge_frame = tk.Frame(header_left, bg="#142235", highlightthickness=1, highlightbackground="#26364A", padx=6, pady=1)
+        badge_frame = tk.Frame(header_left, bg="#301D25", highlightthickness=1, highlightbackground="#4C1D24", padx=6, pady=1)
         badge_frame.pack(side="left", padx=(10, 0))
         badge_label = tk.Label(
             badge_frame,
-            text="Bảo mật",
+            text="Cảnh báo",
             font=("Segoe UI", 8, "bold"),
-            fg="#38BDF8",
-            bg="#142235"
+            fg="#F87171",
+            bg="#301D25"
         )
         badge_label.pack()
 
@@ -163,7 +163,7 @@ def popup_main(commands, events, base_url):
             card,
             text="Đã phát hiện 1 vùng cần bảo vệ:",
             font=("Segoe UI", 9, "bold"),
-            fg="#14B8A6",
+            fg="#F87171",
             bg="#142235",
             anchor="w"
         )
@@ -179,7 +179,7 @@ def popup_main(commands, events, base_url):
 
         dot = tk.Canvas(advice_row, width=6, height=6, bg="#0B1422", highlightthickness=0)
         dot.pack(side="left", padx=(0, 6))
-        dot.create_oval(1, 1, 5, 5, fill="#14B8A6", outline="#14B8A6")
+        dot.create_oval(1, 1, 5, 5, fill="#EF4444", outline="#EF4444")
 
         tk.Label(
             advice_row,
@@ -197,9 +197,9 @@ def popup_main(commands, events, base_url):
             actions,
             text="Xem & che ngay",
             font=("Segoe UI", 10, "bold"),
-            bg="#14B8A6",
-            fg="#0B1422",
-            activebackground="#0D9488",
+            bg="#DC2626",
+            fg="#FFFFFF",
+            activebackground="#B91C1C",
             activeforeground="#FFFFFF",
             relief="flat",
             cursor="hand2",
@@ -208,8 +208,8 @@ def popup_main(commands, events, base_url):
             command=review
         )
         primary.pack(side="left")
-        primary.bind("<Enter>", lambda _: primary.configure(bg="#2DD4BF"))
-        primary.bind("<Leave>", lambda _: primary.configure(bg="#14B8A6"))
+        primary.bind("<Enter>", lambda _: primary.configure(bg="#EF4444"))
+        primary.bind("<Leave>", lambda _: primary.configure(bg="#DC2626"))
 
         secondary = tk.Button(
             actions,
@@ -275,22 +275,22 @@ def popup_main(commands, events, base_url):
 
                         # Update count text
                         v_text = f"Đã phát hiện {count} vùng cần bảo vệ:" if count > 1 else "Đã phát hiện 1 vùng cần bảo vệ:"
-                        count_label.config(text=v_text)
+                        count_label.config(text=v_text, fg="#F87171")
 
                         # Update risk badge
                         if max_risk == "critical":
                             badge_frame.config(bg="#301D25", highlightbackground="#4C1D24")
                             badge_label.config(text="Rủi ro cao", fg="#F87171", bg="#301D25")
                         else:
-                            badge_frame.config(bg="#142235", highlightbackground="#26364A")
-                            badge_label.config(text="Bảo mật", fg="#38BDF8", bg="#142235")
+                            badge_frame.config(bg="#301D25", highlightbackground="#4C1D24")
+                            badge_label.config(text="Cảnh báo", fg="#FCA5A5", bg="#301D25")
 
                         # Populate chips
                         for child in chips_row.winfo_children():
                             child.destroy()
                         cats_to_show = categories if categories else ["Thông tin nhạy cảm"]
                         for cat in cats_to_show[:4]:
-                            chip = tk.Frame(chips_row, bg="#0B1422", highlightthickness=1, highlightbackground="#26364A", padx=7, pady=2)
+                            chip = tk.Frame(chips_row, bg="#0B1422", highlightthickness=1, highlightbackground="#3E2028", padx=7, pady=2)
                             chip.pack(side="left", padx=(0, 6))
                             tk.Label(
                                 chip,
