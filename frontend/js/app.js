@@ -17,6 +17,13 @@ const navigation = [
   ["/configuration", "sliders", "Quy tắc bảo vệ"],
   ["/settings", "settings", "Cài đặt"],
 ];
+const workflowSteps = [
+  "Tiếp nhận ảnh",
+  "Phát hiện rủi ro",
+  "Đánh giá chính sách",
+  "Che thông tin",
+  "Kiểm chứng & xuất",
+];
 function links(mobile = false) {
   return navigation
     .map(
@@ -27,8 +34,11 @@ function links(mobile = false) {
 }
 document.querySelector("#app").innerHTML = `
   <aside class="sidebar" id="sidebar">
-    <a href="#/scanner" class="brand" aria-label="ScreenGuard+ trang chủ"><span class="brand-icon">${icon("shield")}</span><span>ScreenGuard<b>+</b></span></a>
-    <nav aria-label="Điều hướng chính">${links()}</nav>
+    <a href="#/scanner" class="brand" data-nav="/scanner" aria-label="ScreenGuard+ trang chủ"><span class="brand-icon">${icon("shield")}</span><span>ScreenGuard<b>+</b></span></a>
+    <p class="sidebar-caption">QUY TRÌNH BẢO VỆ</p>
+    <nav class="workflow-nav" aria-label="Quy trình bảo vệ">${workflowSteps.map((label, index) => `<button type="button" class="workflow-link" data-workflow-step="${index + 1}"><span class="step-number">${String(index + 1).padStart(2, "0")}</span><span>${label}</span><span class="step-state" aria-hidden="true"></span></button>`).join("")}</nav>
+    <p class="sidebar-caption tools-caption">CÔNG CỤ</p>
+    <nav class="tools-nav" aria-label="Công cụ">${links().replace(/<a[^>]+data-nav="\/scanner"[\s\S]*?<\/a>/, "")}<a href="#/notifications" data-nav="/notifications">${icon("bell")}<span>Thông báo</span></a></nav>
     <div class="sidebar-bottom"><button id="install-app" class="install-button">${icon("download")} Cài ứng dụng</button><a class="about-link" href="#/overview" data-nav="/overview" aria-label="Giới thiệu ScreenGuard+">${icon("info")}<span>Về ScreenGuard+</span></a></div>
   </aside>
   <button class="sidebar-backdrop" aria-label="Đóng điều hướng"></button>
@@ -64,6 +74,20 @@ document.querySelector(".sidebar-backdrop").onclick = () => {
 mobileViewport.addEventListener("change", syncSidebar);
 window.addEventListener("hashchange", () => queueMicrotask(syncSidebar));
 syncSidebar();
+document.querySelectorAll("[data-workflow-step]").forEach(
+  (button) =>
+    (button.onclick = () => {
+      const step = Number(button.dataset.workflowStep);
+      if (document.querySelector("#workflow-step-select"))
+        window.dispatchEvent(
+          new CustomEvent("workflow:navigate", { detail: step }),
+        );
+      else location.hash = `/scanner?step=${step}`;
+      document.body.classList.remove("menu-open");
+      menu.setAttribute("aria-expanded", "false");
+      syncSidebar();
+    }),
+);
 document.querySelector(".skip-link").onclick = (event) => {
   event.preventDefault();
   document.querySelector("#main").focus();

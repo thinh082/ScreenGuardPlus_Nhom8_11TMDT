@@ -34,8 +34,258 @@ export function scannerPage(main) {
     scanProfile = "personal";
   main.innerHTML = scannerView();
   const $ = (selector) => main.querySelector(selector);
+  let workflowStep = 1,
+    scanComplete = false,
+    exportedHash = "";
+  let policy = null,
+    policyKey = "",
+    policySerial = 0,
+    policyController;
+  let ticketExpired = false;
+  let exporting = false;
+  const steps = [
+    [
+      "Tiếp nhận ảnh",
+      "Bắt đầu từ một ảnh bạn muốn bảo vệ.",
+      "Tiếp: Xem phát hiện",
+    ],
+    [
+      "Phát hiện rủi ro",
+      "Kiểm tra những vùng OCR đã tìm thấy.",
+      "Tiếp: Đánh giá chính sách",
+    ],
+    [
+      "Đánh giá chính sách",
+      "Chọn ngữ cảnh chia sẻ và xem kế hoạch che.",
+      "Tiếp: Che thông tin",
+    ],
+    [
+      "Che thông tin",
+      "Chọn vùng, che và đối chiếu ảnh gốc.",
+      "Tiếp: Kiểm chứng & xuất",
+    ],
+    ["Kiểm chứng & xuất", "Kiểm tra ảnh đã che trước khi tải PNG.", ""],
+  ];
+  const reasons = {
+    SECRET_REDACTION_REQUIRED: "Bí mật hệ thống phải được che trước khi xuất.",
+    CITIZEN_ID_REDACTION_REQUIRED: "Cần che CCCD khi chia sẻ công khai.",
+    FINANCIAL_DATA_REDACTION_REQUIRED:
+      "Cần che tài khoản ngân hàng khi chia sẻ công khai.",
+    SENSITIVE_PII_INTERNAL_WARNING:
+      "Còn CCCD hoặc tài khoản ngân hàng chưa che khi chia sẻ nội bộ.",
+    INTERNAL_DATA_WARNING: "Còn thông tin cá nhân hoặc mạng nội bộ chưa che.",
+    LOW_CONFIDENCE_REVIEW: "Có vùng OCR chưa rõ. Hãy kiểm tra lại.",
+    EXPORT_ALLOWED: "Đáp ứng chính sách với các vùng đã phát hiện.",
+  };
+  // Move existing controls, never recreate the image, canvas or finding state.
+  $("#intake-upload").append($("#dropzone"));
+  $("#intake-options").append($("#profile-select"));
+  $("#profile-select").insertAdjacentHTML(
+    "beforebegin",
+    '<label for="profile-select">Chế độ bảo vệ</label>',
+  );
+  $(".workflow-policy").prepend($("#destination-select"));
+  $("#destination-select").insertAdjacentHTML(
+    "beforebegin",
+    '<label for="destination-select">Chia sẻ</label>',
+  );
+  const recovery = document.createElement("div");
+  recovery.className = "workflow-recovery";
+  $(".workflow-footer").before(recovery);
+  for (const id of [
+    "scan-progress",
+    "scanner-error",
+    "scan-recovery",
+    "scan-warnings",
+  ])
+    recovery.append($(`#${id}`));
+  function selectedBoxes() {
+    return findings.filter((f) => selected.has(f.id)).map((f) => f.box);
+  }
+  function resetPolicy() {
+    policy = null;
+    policyKey = "";
+    policySerial++;
+    policyController?.abort();
+  }
+  async function updatePolicy(force = false) {
+    if (![3, 5].includes(workflowStep)) return;
+    const banner = $("#policy-banner");
+    const boxes = workflowStep === 3 || redacted ? selectedBoxes() : [];
+    const key = JSON.stringify([
+      scanTicket,
+      workflowStep,
+      $("#destination-select").value,
+      boxes,
+    ]);
+    if (!force && key === policyKey) return;
+    policyKey = key;
+    policy = null;
+    policyController?.abort();
+    delete banner.dataset.decision;
+    const serial = ++policySerial;
+    banner.className = "policy-banner";
+    $("#policy-reasons").replaceChildren();
+    $("#policy-coverage").textContent = "";
+    if (!scanTicket || !scanComplete || fixtureId || ticketExpired) {
+      banner.textContent = ticketExpired
+        ? "Phiên quét đã hết hạn"
+        : "Chưa có phiên OCR hợp lệ";
+      $("#policy-coverage").textContent =
+        "Quét lại ảnh để backend đánh giá. Không có quyết định giả lập.";
+      return;
+    }
+    banner.textContent = "Đang đánh giá…";
+    policyController = new AbortController();
+    const pendingController = policyController;
+    const timeout = setTimeout(() => pendingController.abort(), 10000);
+    try {
+      const response = await fetch("./api/policy/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        signal: policyController.signal,
+        body: JSON.stringify({
+          ticket: scanTicket,
+          destination: $("#destination-select").value,
+          redactions: boxes.map((b) => ({
+            x: Math.round(b.x),
+            y: Math.round(b.y),
+            width: Math.round(b.width),
+            height: Math.round(b.height),
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (disposed || serial !== policySerial) return;
+      if (response.status === 422 && data?.detail?.code === "INVALID_TICKET") {
+        ticketExpired = true;
+        throw new Error("Phiên quét đã hết hạn. Hãy quét lại ảnh.");
+      }
+      if (!response.ok || !["BLOCK", "WARN", "ALLOW"].includes(data?.decision))
+        throw new Error("Chưa lấy được quyết định từ backend. Hãy thử lại.");
+      policy = data;
+      banner.dataset.decision = data.decision;
+      banner.className = `policy-banner policy-${{ BLOCK: "blocked", WARN: "warning", ALLOW: "allowed" }[data.decision]}`;
+      banner.textContent = `${data.decision} · ${{ BLOCK: "Cần che thêm", WARN: "Cần xác nhận", ALLOW: "Đáp ứng chính sách" }[data.decision]}`;
+      $("#policy-reasons").innerHTML = data.reasons
+        .map(
+          (r) =>
+            `<li>${escapeHTML(reasons[r] || "Backend yêu cầu kiểm tra bổ sung.")}</li>`,
+        )
+        .join("");
+      $("#policy-coverage").textContent =
+        `Còn ${data.unredacted_mandatory_count} vùng bắt buộc · ${data.unredacted_warning_count} cảnh báo`;
+    } catch (error) {
+      if (!disposed && serial === policySerial) {
+        delete banner.dataset.decision;
+        banner.textContent = ticketExpired
+          ? "Phiên quét đã hết hạn. Hãy quét lại ảnh."
+          : "Chưa đánh giá được chính sách";
+        $("#policy-coverage").textContent = ticketExpired
+          ? "Ảnh và vùng chọn vẫn giữ nguyên trong phiên này."
+          : "Kiểm tra backend và chọn Đánh giá lại.";
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (!disposed && serial === policySerial) syncWorkflow(false);
+    }
+  }
+  function syncWorkflow(refresh = true) {
+    main.dataset.workflowStep = workflowStep;
+    $("#workflow-title").textContent = steps[workflowStep - 1][0];
+    document.querySelector("#breadcrumb-page").textContent =
+      steps[workflowStep - 1][0];
+    $("#workflow-description").textContent = steps[workflowStep - 1][1];
+    $("#workflow-eyebrow").textContent =
+      `BƯỚC ${String(workflowStep).padStart(2, "0")} / 05`;
+    $("#workflow-step-select").value = workflowStep;
+    $("#workflow-previous").disabled = workflowStep === 1;
+    $("#workflow-next").hidden = workflowStep === 5;
+    $("#workflow-next").textContent = steps[workflowStep - 1][2];
+    $("#workflow-next").disabled =
+      !original ||
+      busy ||
+      (workflowStep === 2 && !scanComplete) ||
+      (workflowStep === 4 && !redacted);
+    $("#workflow-hint").textContent = !original
+      ? "Chọn ảnh để bắt đầu."
+      : busy
+        ? exporting
+          ? "Đang xuất PNG…"
+          : "Đang xử lý ảnh…"
+        : workflowStep === 3
+          ? "Đánh giá kế hoạch, chưa thay đổi ảnh."
+          : workflowStep === 5
+            ? "OCR có thể bỏ sót. Kiểm tra trước khi chia sẻ."
+            : `${selected.size}/${findings.length} vùng được chọn`;
+    $("#intake-panel").hidden = workflowStep !== 1;
+    $("#received-image").hidden = !original;
+    $("#received-name").textContent = $("#image-meta").textContent;
+    $("#received-state").textContent = busy
+      ? "Đang quét bằng Tesseract…"
+      : scanComplete
+        ? `OCR hoàn tất · ${findings.length} vùng cần kiểm tra`
+        : "Chưa quét xong · có thể đánh dấu thủ công";
+    $("#policy-context").textContent =
+      workflowStep === 3
+        ? "KẾ HOẠCH CHE · CHƯA ÁP DỤNG"
+        : "ẢNH XUẤT · CÁC VÙNG ĐÃ CHE";
+    $("#download-image").disabled = !redacted || busy || ticketExpired;
+    $("#policy-rescan").hidden = !original || (!ticketExpired && !!scanTicket);
+    const complete = [
+      !!original,
+      scanComplete,
+      !!policy && !ticketExpired,
+      !!redacted,
+      !!exportedHash,
+    ];
+    document
+      .querySelectorAll("button[data-workflow-step]")
+      .forEach((button) => {
+        const n = Number(button.dataset.workflowStep);
+        const active = n === workflowStep;
+        button.classList.toggle("active", active);
+        button.classList.toggle("is-complete", complete[n - 1]);
+        button.setAttribute(
+          "aria-label",
+          `${String(n).padStart(2, "0")} ${steps[n - 1][0]}${complete[n - 1] ? ", đã hoàn thành" : ""}`,
+        );
+        if (active) button.setAttribute("aria-current", "step");
+        else button.removeAttribute("aria-current");
+      });
+    if (refresh) void updatePolicy();
+  }
+  function goStep(n, focus = true) {
+    if (n < 1 || n > 5) return;
+    if (n > 1 && !original) {
+      toast("Hãy tiếp nhận ảnh trước.");
+      return;
+    }
+    workflowStep = n;
+    if ([3, 5].includes(n)) policyKey = "";
+    // Step changes only move the view. No OCR, redaction or export is triggered.
+    syncWorkflow();
+    if (focus) $("#workflow-title").focus({ preventScroll: true });
+    requestAnimationFrame(() => paint());
+  }
+  const navigate = (event) => goStep(Number(event.detail));
+  window.addEventListener("workflow:navigate", navigate);
+  $("#workflow-step-select").onchange = (e) => goStep(Number(e.target.value));
+  $("#workflow-previous").onclick = () => goStep(workflowStep - 1);
+  $("#workflow-next").onclick = () => goStep(workflowStep + 1);
+  $("#intake-replace").onclick = () => $("#image-input").click();
+  $("#refresh-policy").onclick = () => updatePolicy(true);
+  $("#policy-rescan").onclick = () => {
+    goStep(2);
+    runScan();
+  };
+  const refreshVisiblePolicy = () => {
+    if (!document.hidden) void updatePolicy(true);
+  };
+  window.addEventListener("focus", refreshVisiblePolicy);
+  const policyTimer = setInterval(refreshVisiblePolicy, 60000);
   // A loading state above the preview remains visible on compact screens.
-  $(".scanner-workspace").prepend($("#scan-progress"));
   main.dataset.mobilePanel = "image";
   $(".scanner-workspace").id = "scan-image-panel";
   $(".findings-panel").id = "scan-findings-panel";
@@ -79,6 +329,8 @@ export function scannerPage(main) {
   }
   function invalidateRedaction() {
     redacted = null;
+    exportedHash = "";
+    resetPolicy();
     view = "before";
     const hashEl = $("#export-hash-pill");
     if (hashEl) hashEl.hidden = true;
@@ -145,7 +397,7 @@ export function scannerPage(main) {
       ? findings
           .map(
             (f) =>
-              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "critical" ? '<i class="risk-dot critical-dot" aria-label="Rủi ro cực cao"></i>' : f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
+              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "critical" ? '<i class="risk-dot critical-dot" aria-label="Rủi ro cực cao"></i>' : f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small class="finding-type">${escapeHTML(f.type.toUpperCase())} · ${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "Cần kiểm tra"}</small>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
           )
           .join("")
       : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
@@ -154,11 +406,17 @@ export function scannerPage(main) {
         ? `Đã che ${selected.size} vùng. Xem lại trước khi tải.`
         : `${selected.size}/${findings.length} vùng được chọn để che.`
       : "Chọn ảnh để bắt đầu kiểm tra.";
-    $("#redact-selected").textContent = `Che ${selected.size} vùng`;
+    $("#redact-selected").textContent =
+      !findings.length && scanComplete
+        ? "Chuẩn bị PNG"
+        : `Che ${selected.size} vùng`;
     $("#redact-selected").hidden = !!redacted;
     $("#download-image").hidden = !redacted;
     $("#edit-redaction").hidden = !redacted;
-    $("#redact-selected").disabled = !selected.size || busy;
+    $("#redact-selected").disabled =
+      !original ||
+      (!selected.size && (findings.length > 0 || !scanComplete)) ||
+      busy;
     $("#download-image").disabled = !redacted || busy;
     $("#toggle-draw").disabled = busy;
     $("#coordinate-form")
@@ -169,32 +427,12 @@ export function scannerPage(main) {
     $("#error-manual").disabled = busy;
     $("#profile-select").disabled = busy;
     $("#destination-select").disabled = busy;
-    const banner = $("#policy-banner");
-    if (banner) {
-      if (!findings.length || !original) {
-        banner.hidden = true;
-      } else {
-        const dest = $("#destination-select")?.value || "public";
-        const isCritical = (f) => (f.risk || "").toLowerCase() === "critical";
-        const remaining = redacted
-          ? findings.filter((f) => !selected.has(f.id))
-          : findings;
-        const mandatory = remaining.some(
-          (f) =>
-            isCritical(f) ||
-            (scanProfile === "security" &&
-              dest === "public" &&
-              ["cccd", "bank"].includes(f.type)),
-        );
-        banner.hidden = !!fixtureId;
-        banner.className = `policy-banner ${mandatory ? "policy-blocked" : remaining.length ? "policy-warning" : "policy-allowed"}`;
-        banner.textContent = mandatory
-          ? "CHẶN XUẤT ẢNH: Còn vùng bắt buộc che."
-          : remaining.length
-            ? "Còn thông tin chưa che. Cần xác nhận khi tải ảnh."
-            : "Đã che các vùng đã chọn. Hãy kiểm tra lại ảnh.";
-      }
-    }
+    $("#select-all").disabled = busy;
+    $("#deselect-all").disabled = busy;
+    $("#findings-list")
+      .querySelectorAll("input")
+      .forEach((input) => (input.disabled = busy));
+    syncWorkflow();
     if (focusedCheckbox)
       $("#findings-list")
         .querySelector(`[data-finding="${CSS.escape(focusedCheckbox)}"]`)
@@ -203,7 +441,7 @@ export function scannerPage(main) {
   }
   function setBusy(value) {
     busy = value;
-    $("#scan-progress").hidden = !value;
+    $("#scan-progress").hidden = !value || exporting;
     $(".scanner-workspace").setAttribute("aria-busy", String(value));
     main.dataset.scanState = value
       ? "loading"
@@ -230,6 +468,8 @@ export function scannerPage(main) {
     const localController = controller;
     const scanGeneration = generation;
     scanTicket = null;
+    scanComplete = false;
+    ticketExpired = false;
     scanProfile = getDetectionConfig().profile;
     setError();
     $("#scan-warnings").textContent = "";
@@ -267,6 +507,7 @@ export function scannerPage(main) {
       )
         return;
       scanTicket = result.scan_ticket || null;
+      scanComplete = result.status !== "demo";
       scanProfile = result.profile || scanProfile;
       const manual = findings.filter((f) => f.type === "manual");
       findings = [...result.findings, ...manual];
@@ -312,6 +553,10 @@ export function scannerPage(main) {
     controller?.abort();
     busy = false;
     original = canvas;
+    exporting = false;
+    scanComplete = false;
+    ticketExpired = false;
+    workflowStep = 2;
     scanTicket = null;
     scanProfile = getDetectionConfig().profile;
     fixtureId = id;
@@ -343,6 +588,7 @@ export function scannerPage(main) {
     setError();
     renderFindings();
     if (scanned) {
+      scanComplete = true;
       scanTicket = scanned.scan_ticket || null;
       scanProfile = scanned.profile || scanProfile;
       $("#profile-select").value = scanProfile;
@@ -357,6 +603,7 @@ export function scannerPage(main) {
   }
   async function importFile(file) {
     if (!file) return;
+    exporting = false;
     const token = ++generation;
     controller?.abort();
     controller = null;
@@ -392,6 +639,9 @@ export function scannerPage(main) {
     generation++;
     controller?.abort();
     original = null;
+    exporting = false;
+    scanComplete = false;
+    workflowStep = 1;
     scanTicket = null;
     activeFinding = null;
     redacted = null;
@@ -590,6 +840,7 @@ export function scannerPage(main) {
   $("#retry-scan").onclick = runScan;
   function openManual() {
     if (!original || busy) return;
+    goStep(4, false);
     $("#image-menu").open = false;
     $("#advanced-tools").open = true;
     setMobilePanel("image");
@@ -670,12 +921,15 @@ export function scannerPage(main) {
         original,
         findings.filter((f) => selected.has(f.id)),
       );
+      if ($("#scanner-error").textContent) toast("Đã cập nhật vùng che.");
+      setError();
       view = "after";
       setMobilePanel("image");
       stopDrawing();
       $("#view-after").disabled = false;
+      resetPolicy();
       renderFindings();
-      $("#download-image").focus({ preventScroll: true });
+      $("#workflow-next").focus({ preventScroll: true });
     } catch (error) {
       setError(error.message);
     }
@@ -686,6 +940,7 @@ export function scannerPage(main) {
       exportGeneration = generation;
 
     if (scanTicket && !fixtureId) {
+      exporting = true;
       setBusy(true);
       setError("");
       try {
@@ -730,12 +985,14 @@ export function scannerPage(main) {
         toast("Đã tải ảnh đã che.");
         const hashEl = $("#export-hash-pill");
         if (hashEl) {
+          exportedHash = hash;
           hashEl.hidden = false;
-          hashEl.textContent = `SHA-256: ${hash.slice(0, 16)}...`;
+          hashEl.textContent = `SHA-256: ${hash}`;
           hashEl.title = `Mã băm toàn vẹn: ${hash}`;
         }
       } catch (err) {
         if (disposed || exportGeneration !== generation) return;
+        resetPolicy();
         if (err.code === "POLICY_BLOCKED") {
           setError(
             "Còn vùng bắt buộc che. Hãy chọn vùng và che lại trước khi tải.",
@@ -744,7 +1001,10 @@ export function scannerPage(main) {
           setError(err.message || "Xuất ảnh thất bại.");
         }
       } finally {
-        if (!disposed && exportGeneration === generation) setBusy(false);
+        if (!disposed && exportGeneration === generation) {
+          exporting = false;
+          setBusy(false);
+        }
       }
       return;
     }
@@ -867,6 +1127,8 @@ export function scannerPage(main) {
   if (destSelect) {
     destSelect.value = getDetectionConfig().destination || "public";
     destSelect.onchange = (e) => {
+      exportedHash = "";
+      $("#export-hash-pill").hidden = true;
       const cfg = getDetectionConfig();
       cfg.destination = e.target.value;
       updateDetectionConfig(cfg);
@@ -903,6 +1165,17 @@ export function scannerPage(main) {
   }
   return () => {
     disposed = true;
+    clearInterval(policyTimer);
+    window.removeEventListener("focus", refreshVisiblePolicy);
+    policySerial++;
+    policyController?.abort();
+    window.removeEventListener("workflow:navigate", navigate);
+    document
+      .querySelectorAll("button[data-workflow-step]")
+      .forEach((button) => {
+        button.classList.remove("active", "is-complete");
+        button.removeAttribute("aria-current");
+      });
     main.removeEventListener("dragover", preventDrop);
     main.removeEventListener("drop", onDrop);
     generation++;

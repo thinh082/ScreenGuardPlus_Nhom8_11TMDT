@@ -1,18 +1,19 @@
 import { icon } from "./icons.js";
-import { heading } from "./ui.js";
 
 export function scannerView() {
   return (
-    heading(
-      "",
-      "Kiểm tra ảnh",
-      "Thông tin nhạy cảm được tìm trước khi bạn chia sẻ.",
-      `<span id="scan-mode" class="sample-label" hidden></span>`,
-    ) +
+    `<div class="workflow-heading"><div><p class="workflow-eyebrow" id="workflow-eyebrow">BƯỚC 01 / 05</p><h1 id="workflow-title" tabindex="-1">Tiếp nhận ảnh</h1><p id="workflow-description">Bắt đầu từ một ảnh bạn muốn bảo vệ.</p></div><label class="workflow-jump"><span>Chuyển bước</span><select id="workflow-step-select" aria-label="Bước trong quy trình"><option value="1">01 · Tiếp nhận ảnh</option><option value="2">02 · Phát hiện rủi ro</option><option value="3">03 · Đánh giá chính sách</option><option value="4">04 · Che thông tin</option><option value="5">05 · Kiểm chứng & xuất</option></select></label><span id="scan-mode" class="sample-label" hidden></span></div>` +
     `
+    <section id="intake-panel" class="intake-panel" aria-label="Tiếp nhận ảnh">
+      <div id="intake-options" class="intake-options"></div>
+      <div id="intake-upload"></div>
+      <div id="received-image" class="received-image" hidden><span class="received-symbol">${icon("image")}</span><div><strong id="received-name"></strong><p id="received-state" role="status"></p></div><button id="intake-replace" class="button secondary">Đổi ảnh</button></div>
+      <a class="companion-intake" href="#/notifications">${icon("bell")}<span>Ảnh từ Windows Companion</span>${icon("chevron")}</a>
+    </section>
     <div class="mobile-scan-tabs" role="tablist" aria-label="Không gian kiểm tra"><button id="mobile-image-tab" role="tab" aria-selected="true" aria-controls="scan-image-panel" class="active">Hình ảnh</button><button id="mobile-findings-tab" role="tab" aria-selected="false" aria-controls="scan-findings-panel">Vùng cần kiểm tra <span id="mobile-finding-count">0</span></button></div>
     <div class="scanner-layout">
       <section class="scanner-workspace" aria-busy="false">
+        <section class="workflow-policy" aria-labelledby="policy-title"><p class="workflow-eyebrow" id="policy-context">KẾ HOẠCH CHE · CHƯA ÁP DỤNG</p><h2 id="policy-title">Kết quả chính sách</h2><div id="policy-banner" class="policy-banner" role="status">Chưa đánh giá</div><ul id="policy-reasons"></ul><p id="policy-coverage" class="small muted"></p><button class="button secondary" id="policy-rescan" hidden>Quét lại ảnh</button><button class="text-button" id="refresh-policy">Đánh giá lại</button><p id="policy-note" class="small muted">Kết quả chỉ áp dụng cho các vùng đã phát hiện.</p></section>
         <div class="workspace-top-bar">
           <div class="security-controls"><select id="profile-select" class="small-select" aria-label="Chế độ bảo vệ"><option value="personal">Cá nhân + secrets</option><option value="security">IT / DevOps</option></select><select id="destination-select" class="small-select" aria-label="Mục đích chia sẻ"><option value="public">Công khai</option><option value="internal">Nội bộ</option></select></div>
         </div>
@@ -33,10 +34,9 @@ export function scannerView() {
       <aside class="findings-panel">
         <div class="section-title"><h2 id="finding-title" aria-live="polite">Vùng cần kiểm tra</h2><span id="finding-count" hidden>0</span></div>
         <div id="result-status" class="result-status" aria-live="polite">Chưa có ảnh</div>
-        <div id="policy-banner" class="policy-banner" hidden role="status"></div>
         <div id="selection-tools" class="selection-tools" hidden><button id="select-all" class="text-button">Chọn tất cả</button><button id="deselect-all" class="text-button">Bỏ chọn</button></div>
         <div id="findings-list" class="findings-list"></div>
-        <div id="export-hash-pill" class="export-hash-pill" hidden></div>
+        <div id="export-hash-pill" class="export-hash-pill" hidden role="status"></div>
         <div class="redaction-actions">
           <p id="selection-summary" role="status" class="small muted">Chọn ảnh để bắt đầu.</p>
           <button id="redact-selected" class="button primary full-width" disabled>Che 0 vùng</button>
@@ -46,7 +46,8 @@ export function scannerView() {
         <p class="findings-warning">OCR có thể bỏ sót. Kiểm tra ảnh trước khi chia sẻ.</p>
       </aside>
     </div>
-    <p class="scanner-tip">Ảnh được xử lý tại máy chủ ứng dụng, không gửi đến dịch vụ OCR bên thứ ba.</p>
+    <div class="workflow-footer"><button class="button secondary" id="workflow-previous">Quay lại</button><p id="workflow-hint" role="status">Chọn ảnh để bắt đầu.</p><button class="button primary" id="workflow-next">Tiếp: Xem phát hiện ${icon("chevron")}</button></div>
+    <p class="scanner-tip">Xử lý local · Bạn quyết định trước khi chia sẻ.</p>
     <dialog id="image-detail-dialog" class="image-detail-dialog"><div class="section-title"><h2>Xem chi tiết ảnh</h2><button id="close-image-detail" class="icon-button" aria-label="Đóng ảnh chi tiết">${icon("x")}</button></div><p class="small muted">Cuộn để xem ảnh ở kích thước gốc.</p><div class="detail-image-viewport"><canvas id="detail-canvas" aria-label="Ảnh ở kích thước gốc; nhấn vùng được đánh dấu để chọn."></canvas></div></dialog>
     <dialog id="camera-dialog" class="camera-dialog"><div class="section-title"><h2>Chụp ảnh</h2><button id="close-camera" class="icon-button" aria-label="Đóng camera">${icon("x")}</button></div><video id="camera-video" autoplay playsinline muted></video><p id="camera-error" role="alert" class="error-text"></p><div class="actions"><button id="capture-photo" class="button primary" disabled>Chụp ảnh</button><button id="native-camera" class="button secondary">Camera thiết bị</button></div><p class="small muted">Camera chỉ hoạt động khi cửa sổ này mở.</p></dialog>`
   );

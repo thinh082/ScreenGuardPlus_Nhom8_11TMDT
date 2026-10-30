@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
@@ -36,6 +37,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
     "test.screenguard@example.com",
   );
   await expect(page.locator("[data-finding]:checked")).toHaveCount(5);
+  await workflowStep(page, 4);
   await page.locator("#advanced-tools>summary").click();
   await page.locator(".coordinates summary").click();
   for (const [key, value] of Object.entries({
@@ -47,6 +49,7 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
     await page.locator(`#coordinate-form [name="${key}"]`).fill(value);
   await page.locator('#coordinate-form [type="submit"]').click();
   await expect(page.locator("#finding-count")).toHaveText("6");
+  await workflowStep(page, 4);
   await page.locator("#image-menu>summary").click();
   await page.locator("#start-scan").click();
   await expect(page.locator("#scan-progress")).toBeHidden();
@@ -61,8 +64,10 @@ test("TC06 TC10 real screenshot → automatic + manual regions → opaque export
     path: "test-results/real-ocr-before.png",
     fullPage: true,
   });
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   const downloaded = page.waitForEvent("download");
+  await workflowStep(page, 5);
   await page.locator("#download-image").click();
   const bytes = await readFile(await (await downloaded).path());
   const exported = await page.evaluate(
@@ -162,6 +167,7 @@ test("TC13 OCR unavailable leaves manual marking/redaction available", async ({
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
   await expect(page.locator("#toggle-draw")).toBeEnabled();
+  await workflowStep(page, 4);
   await page.locator("#advanced-tools>summary").click();
   await page.locator(".coordinates summary").click();
   for (const [key, value] of Object.entries({
@@ -172,6 +178,7 @@ test("TC13 OCR unavailable leaves manual marking/redaction available", async ({
   }))
     await page.locator(`#coordinate-form [name="${key}"]`).fill(value);
   await page.locator('#coordinate-form [type="submit"]').click();
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#download-image")).toBeEnabled();
 });

@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
@@ -41,6 +42,7 @@ test("rapid replacement ignores an old real OCR response and never duplicates an
     /\d/,
   );
   await expect(page.locator("#progress-number")).not.toContainText("%");
+  await workflowStep(page, 4);
   await page.locator("#image-menu>summary").click();
   await expect(page.locator("#start-scan")).toBeDisabled();
   await page.evaluate(() => document.querySelector("#start-scan").click());
@@ -108,6 +110,7 @@ test("real five-type findings link list, keyboard and image boxes; unselected ac
   await expect(checkbox).toBeChecked();
   await expect(checkbox).toBeFocused();
   await checkbox.uncheck();
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#view-after")).toHaveAttribute(
     "aria-pressed",
@@ -122,6 +125,7 @@ test("real five-type findings link list, keyboard and image boxes; unselected ac
     expect(dialog.type()).toBe("confirm");
     await dialog.accept();
   });
+  await workflowStep(page, 5);
   await page.locator("#download-image").click();
   const exported = await readFile(await (await pendingDownload).path());
   const original = await readFile("sample_data/screenshots/all.png");
@@ -204,6 +208,7 @@ test("failed automatic scan offers retry and working manual marking without auto
   await page.locator('#coordinate-form [type="submit"]').click();
   await expect(page.locator("#finding-count")).toHaveText("1");
   // A manual region clears the message, but the retry action remains available in the image menu.
+  await workflowStep(page, 4);
   await page.locator("#image-menu>summary").click();
   await page.locator("#start-scan").click();
   await expect(page.locator("#finding-count")).toHaveText("2");

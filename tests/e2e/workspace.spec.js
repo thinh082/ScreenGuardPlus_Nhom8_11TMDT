@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 
 test("sample uses real OCR; export requires review and editing invalidates the previous image", async ({
@@ -28,11 +29,14 @@ test("sample uses real OCR; export requires review and editing invalidates the p
     `${Math.round(first.ocr_confidence * 100)}%`,
   );
   await expect(row.locator("dl")).toContainText(String(first.score));
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#redact-selected")).toBeHidden();
+  await workflowStep(page, 5);
   await expect(page.locator("#download-image")).toBeVisible();
   await expect(page.locator("#edit-redaction")).toBeVisible();
   expect(downloads).toHaveLength(0);
+  await workflowStep(page, 4);
   await page.locator("#edit-redaction").click();
   await expect(page.locator("#view-before")).toHaveAttribute(
     "aria-pressed",
@@ -40,6 +44,7 @@ test("sample uses real OCR; export requires review and editing invalidates the p
   );
   await expect(page.locator("#redact-selected")).toBeFocused();
   await expect(page.locator("#download-image")).toBeDisabled();
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await page.locator("[data-finding]").first().uncheck();
   await expect(page.locator("#redact-selected")).toHaveText("Che 4 vùng");
@@ -60,6 +65,7 @@ test("original-size inspector keeps image coordinates, supports selection and Es
     .setInputFiles("sample_data/screenshots/all.png");
   const result = await (await pending).json();
   await expect(page.locator("#finding-count")).toHaveText("5");
+  await workflowStep(page, 4);
   await page.locator("#zoom-image").click();
   await expect(page.locator("#image-detail-dialog")).toBeVisible();
   const geometry = await page.locator("#detail-canvas").evaluate((c) => ({
@@ -99,6 +105,7 @@ test("laptop and desktop workspaces fit both themes, with three primary navigati
     .locator("#image-input")
     .setInputFiles("sample_data/screenshots/all.png");
   await expect(page.locator("#finding-count")).toHaveText("5");
+  await workflowStep(page, 4);
   for (const width of [1366, 1920]) {
     await page.setViewportSize({ width, height: width === 1366 ? 768 : 1080 });
     for (const theme of ["light", "dark"]) {
@@ -133,6 +140,7 @@ test("laptop and desktop workspaces fit both themes, with three primary navigati
       });
     }
   }
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await page.screenshot({
     path: "test-results/phase3-after-dark.png",

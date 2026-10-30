@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
@@ -8,7 +9,7 @@ test("dashboard navigation, actual configuration counts, install help, and clean
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Kiểm tra ảnh", exact: true }),
+    page.getByRole("heading", { name: "Tiếp nhận ảnh", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/dashboard-desktop.png",
@@ -20,7 +21,7 @@ test("dashboard navigation, actual configuration counts, install help, and clean
   for (const [href, title] of [
     ["/configuration", "Quy tắc bảo vệ"],
     ["/settings", "Cài đặt"],
-    ["/scanner", "Kiểm tra ảnh"],
+    ["/scanner", "Tiếp nhận ảnh"],
     ["/overview", "Tổng quan"],
   ]) {
     await page.locator(`[data-nav="${href}"]`).click();
@@ -40,12 +41,14 @@ test("fixed demo: scan, choose, redact, before/after, PNG pixels, clear", async 
   await page.locator("#deselect-all").click();
   await expect(page.locator("#redact-selected")).toBeDisabled();
   await page.locator('[data-finding="demo-email"]').check();
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#view-after")).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   const downloadPromise = page.waitForEvent("download");
+  await workflowStep(page, 5);
   await page.locator("#download-image").click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("screenguard-protected.png");
@@ -76,6 +79,7 @@ test("fixed demo: scan, choose, redact, before/after, PNG pixels, clear", async 
     path: "test-results/scanner-desktop.png",
     fullPage: true,
   });
+  await workflowStep(page, 4);
   await page.locator("#view-before").click();
   await expect(page.locator("#view-before")).toHaveAttribute(
     "aria-pressed",
@@ -83,6 +87,7 @@ test("fixed demo: scan, choose, redact, before/after, PNG pixels, clear", async 
   );
   await page.locator("#select-all").click();
   await expect(page.locator("#download-image")).toBeDisabled();
+  await workflowStep(page, 4);
   await page.locator("#image-menu>summary").click();
   await page.locator("#clear-image").click();
   await expect(page.locator("#dropzone")).toBeVisible();
@@ -104,6 +109,7 @@ test("user upload gets real OCR, manual redaction and same-origin request", asyn
     "Không phát hiện thông tin nhạy cảm. Vui lòng kiểm tra lại ảnh trước khi chia sẻ.",
   );
   await expect(page.locator("#finding-count")).toHaveText("0");
+  await workflowStep(page, 4);
   await page.locator("#advanced-tools>summary").click();
   await page.locator("details.coordinates summary").click();
   for (const [name, value] of Object.entries({
@@ -115,6 +121,7 @@ test("user upload gets real OCR, manual redaction and same-origin request", asyn
     await page.locator(`#coordinate-form [name="${name}"]`).fill(value);
   await page.locator('#coordinate-form [type="submit"]').click();
   await expect(page.locator("#finding-count")).toHaveText("1");
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#download-image")).toBeEnabled();
   await page.locator("[data-remove]").click();
@@ -147,6 +154,7 @@ test("drag and pointer marking use image coordinates", async ({ page }) => {
   await expect(page.locator("#result-status")).toContainText(
     "Không phát hiện thông tin nhạy cảm",
   );
+  await workflowStep(page, 4);
   await page.locator("#advanced-tools>summary").click();
   await page.locator("#toggle-draw").click();
   const box = await page.locator("#preview-canvas").boundingBox();
@@ -220,6 +228,7 @@ test("legacy manual preference still scans on import; reset restores defaults", 
   await page.locator("#sensitivity").selectOption("high");
   await page.goto("/#/scanner?demo");
   await expect(page.locator("#finding-count")).toHaveText("5");
+  await workflowStep(page, 4);
   await page.locator("#image-menu>summary").click();
   await page.locator("#start-scan").click();
   await expect(page.locator("#finding-count")).toHaveText("5");

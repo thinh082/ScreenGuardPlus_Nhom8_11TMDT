@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 test.use({ reducedMotion: "reduce" });
 
@@ -14,7 +15,7 @@ test("PWA opens scanner first; desktop fits the first screen in both saved theme
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
-  await expect(page.locator("h1")).toHaveText("Kiểm tra ảnh");
+  await expect(page.locator("h1")).toHaveText("Tiếp nhận ảnh");
   await inViewport(page.locator("#choose-image"), page);
   await inViewport(page.locator("#open-camera"), page);
   expect(
@@ -111,6 +112,7 @@ test("small phone and tablet keep primary actions visible", async ({
       .locator("#image-input")
       .setInputFiles("sample_data/screenshots/all.png");
     await expect(page.locator("#finding-count")).toHaveText("5");
+    await workflowStep(page, 4);
     await inViewport(page.locator("#redact-selected"), page);
     await inViewport(page.locator("#preview-canvas"), page);
     expect(
@@ -152,6 +154,7 @@ test("phone keeps import, result tabs and export actions in view without page sc
   });
   await page.locator("#demo-image").click();
   await expect(page.locator("#mobile-finding-count")).toHaveText("5");
+  await workflowStep(page, 4);
   await expect(page.locator("#scan-progress")).toBeHidden();
   await inViewport(page.locator("#redact-selected"), page);
   await inViewport(page.locator("#advanced-tools>summary"), page);
@@ -178,6 +181,7 @@ test("phone keeps import, result tabs and export actions in view without page sc
   await page.locator("#deselect-all").click();
   await expect(page.locator("#redact-selected")).toBeDisabled();
   await page.locator("#select-all").click();
+  await workflowStep(page, 4);
   await page.locator("#redact-selected").click();
   await expect(page.locator("#download-image")).toBeEnabled();
   await page.locator("#mobile-image-tab").click();

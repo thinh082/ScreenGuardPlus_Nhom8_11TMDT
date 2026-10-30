@@ -1,3 +1,4 @@
+import { workflowStep } from "./workflow-helpers.js";
 import { test, expect } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, copyFile, rm } from "node:fs/promises";
@@ -85,11 +86,13 @@ test("new secret screenshot alerts with PWA closed and opens an exportable revie
     ]);
     await expect(page.locator("#finding-title")).toContainText("2 vùng");
     expect(scans).toBe(0);
+    await workflowStep(page, 4);
     await page.locator("#redact-selected").click();
     const exported = page.waitForResponse((r) =>
       r.url().endsWith("/api/export"),
     );
     const downloaded = page.waitForEvent("download");
+    await workflowStep(page, 5);
     await page.locator("#download-image").click();
     expect((await exported).status()).toBe(200);
     await downloaded;
@@ -216,9 +219,11 @@ test("local agent works with PWA closed; notification review reuses real OCR and
     await page.locator("[data-finding]").first().uncheck();
     await expect(page.locator("#redact-selected")).toHaveText("Che 4 vùng");
     await page.locator("[data-finding]").first().check();
+    await workflowStep(page, 4);
     await page.locator("#redact-selected").click();
     expect(downloads).toBe(0);
     const pending = page.waitForEvent("download");
+    await workflowStep(page, 5);
     await page.locator("#download-image").click();
     const bytes = await readFile(await (await pending).path());
     const opaque = await page.evaluate(
