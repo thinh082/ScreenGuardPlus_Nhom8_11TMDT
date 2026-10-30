@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="BaoMatChung/BaoMatChung.csproj" />
+  <Project Path="DuAnMvc/DuAnMvc.csproj" />
+  <Project Path="TrungTamApi/TrungTamApi.csproj" />
+</Solution>

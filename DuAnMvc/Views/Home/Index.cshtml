@@ -1,0 +1,19 @@
+@model DuAnMvc.Models.KetNoiModel
+@{ ViewData["Title"] = "Demo lấy kết nối"; }
+<div class="container py-4" style="max-width: 850px">
+    <h1 class="h3 mb-3">Demo lấy chuỗi kết nối</h1>
+    <p class="text-muted">Nhập chuỗi kết nối SQL Server cũ để kiểm tra hoặc lấy chuỗi mới từ Trung tâm.</p>
+    <form method="post" asp-action="Index">
+        <label asp-for="ChuoiCu" class="form-label">Chuỗi kết nối cũ</label>
+        <textarea asp-for="ChuoiCu" class="form-control mb-2" rows="3" spellcheck="false"></textarea>
+        <button type="submit" name="thaoTac" value="kiemTra" class="btn btn-outline-primary mb-4">Kiểm tra kết nối</button>
+        <label asp-for="MaDoiTac" class="form-label">Mã cơ sở</label>
+        <div class="input-group mb-4">
+            <input asp-for="MaDoiTac" class="form-control" />
+            <button type="submit" name="thaoTac" value="layMoi" class="btn btn-primary">Lấy appsetting mới</button>
+        </div>
+        <label asp-for="ChuoiMoi" class="form-label">Chuỗi kết nối mới</label>
+        <textarea asp-for="ChuoiMoi" class="form-control" rows="3" readonly spellcheck="false"></textarea>
+    </form>
+    @if (!string.IsNullOrEmpty(Model.ThongBao)) { <div class="alert alert-info mt-4" role="status">@Model.ThongBao</div> }
+</div>

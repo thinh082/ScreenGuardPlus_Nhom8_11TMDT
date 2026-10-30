@@ -1,0 +1,360 @@
+{
+  "info": {
+    "_postman_id": "5d0c7e1a-2b3f-4c8e-9a10-29102026a001",
+    "name": "TTTB — Lấy kết nối (Postman đóng vai PM khách)",
+    "description": "Chạy theo thứ tự 00→07, MỘT lần từ đầu (02 dùng lại gói của 01). Trước khi chạy: user chạy 04_TEST_postman_reset.sql trên Chinh_TTTBSixOs. Dán chuỗi vào môi trường: chuoiCu (chuỗi CŨ PM đang cầm), chuoiMoi (chuỗi hiện tại trên TTTB), chuoiB (chuỗi dòng B cùng mã). Không chạy quá 10 request/phút (TTTB trả 429).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ===== TTTB Lay ket noi - Postman dong vai PM khach (pre-request cap collection) =====",
+          "// Lam DUNG giao thuc PLAN: K = SHA256(chuan hoa server|db|user|password); chuKy = HMAC(K, ma|gio).",
+          "// Moi request chi khac nhau o \"kich ban\" theo 2 so dau cua ten request.",
+          "var CryptoJS = require('crypto-js');",
+          "",
+          "function chuanHoa(chuoi) {",
+          "  var m = {};",
+          "  (chuoi || '').split(';').forEach(function (p) {",
+          "    var i = p.indexOf('=');",
+          "    if (i <= 0) return;",
+          "    m[p.substring(0, i).trim().toLowerCase().replace(/\\s+/g, ' ')] = p.substring(i + 1).trim();",
+          "  });",
+          "  function lay(ds) { for (var i = 0; i < ds.length; i++) if (m[ds[i]] !== undefined) return m[ds[i]]; return ''; }",
+          "  var server = lay(['server', 'data source', 'address', 'addr']).trim().toLowerCase();",
+          "  if (server.indexOf('tcp:') === 0) server = server.substring(4);",
+          "  var db = lay(['database', 'initial catalog']).trim().toLowerCase();",
+          "  var user = lay(['user id', 'uid', 'user', 'username']).trim().toLowerCase();",
+          "  var pw = lay(['password', 'pwd']);",
+          "  return server + '|' + db + '|' + user + '|' + pw;",
+          "}",
+          "function khoa(chuoi) { return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(chuanHoa(chuoi))); }",
+          "function gioUtc(lechGiay) { return new Date(Date.now() + lechGiay * 1000).toISOString().substring(0, 19) + 'Z'; }",
+          "function chuKy(k, ma, gio) { return CryptoJS.HmacSHA256(CryptoJS.enc.Utf8.parse(ma + '|' + gio), k).toString(CryptoJS.enc.Hex); }",
+          "function doiMatKhau(chuoi) { return chuoi.replace(/(password|pwd)\\s*=\\s*([^;]*)/i, function (_, k, v) { return k + '=' + v + 'X'; }); }",
+          "",
+          "var ten = pm.info.requestName, so = ten.substring(0, 2);",
+          "var ma = pm.environment.get('maCSKCB') || pm.collectionVariables.get('maCSKCB');",
+          "var chuoiCu = pm.environment.get('chuoiCu') || '', chuoiMoi = pm.environment.get('chuoiMoi') || '', chuoiB = pm.environment.get('chuoiB') || '';",
+          "var chuoiKy = null, lech = 0;",
+          "",
+          "if (so === '00') {",
+          "  // Vector co dinh - cung vector harness C# (tests/harness/Program.cs) tinh bang Python.",
+          "  var v1 = khoa('Data Source=TCP:Srv,9090; Initial Catalog=Db1;User ID=Sa;Password=Pw;Encrypt=False').toString();",
+          "  var v2 = khoa('server=srv,9090;database=DB1;uid=sa;pwd=Pw').toString();",
+          "  var v3 = khoa('server=srv,9090;database=DB1;uid=sa;pwd=pw').toString();",
+          "  pm.variables.set('tuKiem', JSON.stringify({ v1: v1, v2: v2, v3: v3 }));",
+          "  pm.variables.set('body', '{}');",
+          "} else if (so === '02') {",
+          "  pm.variables.set('body', pm.collectionVariables.get('goiLan01') || '{}');   // gui lai NGUYEN goi cua 01",
+          "} else {",
+          "  if (so === '01' || so === '06') chuoiKy = chuoiCu;",
+          "  else if (so === '03') chuoiKy = doiMatKhau(chuoiCu);",
+          "  else if (so === '04') { chuoiKy = chuoiCu; lech = -360; }",
+          "  else if (so === '05') chuoiKy = chuoiMoi;",
+          "  else if (so === '07') chuoiKy = chuoiB;",
+          "  if (!chuoiKy) throw new Error('Chua dan chuoi ket noi cho buoc ' + so + ' (bien moi truong chuoiCu/chuoiMoi/chuoiB)');",
+          "  var gio = gioUtc(lech), k = khoa(chuoiKy);",
+          "  var body = JSON.stringify({ maCSKCB: ma, gio: gio, chuKy: chuKy(k, ma, gio) });",
+          "  pm.variables.set('body', body);",
+          "  pm.variables.set('khoaHex', k.toString());",
+          "  pm.variables.set('gio', gio);",
+          "  if (so === '01') pm.collectionVariables.set('goiLan01', body);",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ===== Tests cap collection: kiem mac TRUOC roi giai ma (encrypt-then-MAC), che mat khau khi in =====",
+          "var CryptoJS = require('crypto-js');",
+          "var ten = pm.info.requestName, so = ten.substring(0, 2);",
+          "var MSG401 = 'Không xác thực được.';",
+          "var j = {}; try { j = pm.response.json(); } catch (e) { }",
+          "var ma = pm.environment.get('maCSKCB') || pm.collectionVariables.get('maCSKCB');",
+          "",
+          "function che(chuoi) { return (chuoi || '').replace(/(password|pwd)\\s*=\\s*[^;]*/ig, '$1=***'); }",
+          "function layDb(chuoi) { var m = /(database|initial catalog)\\s*=\\s*([^;]*)/i.exec(chuoi || ''); return m ? m[2].trim().toLowerCase() : ''; }",
+          "function giaiMa(khoaHex, gio, duLieu) {",
+          "  var k = CryptoJS.enc.Hex.parse(khoaHex);",
+          "  var hex = CryptoJS.enc.Base64.parse(duLieu).toString(CryptoJS.enc.Hex);",
+          "  if (hex.length < (16 + 16 + 32) * 2) return null;",
+          "  var iv = CryptoJS.enc.Hex.parse(hex.substring(0, 32));",
+          "  var ct = CryptoJS.enc.Hex.parse(hex.substring(32, hex.length - 64));",
+          "  var mac = hex.substring(hex.length - 64);",
+          "  var kEnc = CryptoJS.SHA256(k.clone().concat(CryptoJS.enc.Utf8.parse('|ENC')));",
+          "  var kMac = CryptoJS.SHA256(k.clone().concat(CryptoJS.enc.Utf8.parse('|MAC')));",
+          "  var vao = CryptoJS.enc.Utf8.parse(ma + '|' + gio).concat(iv.clone()).concat(ct.clone());",
+          "  if (CryptoJS.HmacSHA256(vao, kMac).toString(CryptoJS.enc.Hex) !== mac) return null;   // sai mac => KHONG giai ma",
+          "  return CryptoJS.AES.decrypt({ ciphertext: ct }, kEnc, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);",
+          "}",
+          "function la401() {",
+          "  pm.test(ten + ' -> statusCode 401, message chung, khong duLieu', function () {",
+          "    pm.expect(j.statusCode).to.eql(401); pm.expect(j.message).to.eql(MSG401); pm.expect(j.duLieu).to.be.undefined;",
+          "  });",
+          "}",
+          "function la200(kyVong) {",
+          "  pm.test(ten + ' -> statusCode 200 co duLieu', function () { pm.expect(j.statusCode).to.eql(200); pm.expect(j.duLieu).to.be.a('string'); });",
+          "  var chuoi = j.duLieu ? giaiMa(pm.variables.get('khoaHex'), pm.variables.get('gio'), j.duLieu) : null;",
+          "  pm.test(ten + ' -> mac dung, giai ma duoc', function () { pm.expect(chuoi).to.be.a('string').and.not.empty; });",
+          "  console.log(ten + ' | chuoi nhan duoc: ' + che(chuoi));",
+          "  if (kyVong) pm.test(ten + ' -> chuoi nhan duoc dung ky vong', function () { pm.expect(chuoi).to.eql(kyVong); });",
+          "  pm.test(ten + ' -> phan hoi khong lo chuoi ro', function () { pm.expect(pm.response.text()).to.not.match(/Password=|Server=/i); });",
+          "  return chuoi;",
+          "}",
+          "",
+          "if (so === '00') {",
+          "  var t = JSON.parse(pm.variables.get('tuKiem'));",
+          "  pm.test('00 vector chuan hoa 1 = Python', function () { pm.expect(t.v1).to.eql('daeddbe332a731af9e7dda241a1b7ab9e6061bedc5a839d09c345f4990480d78'); });",
+          "  pm.test('00 vector chuan hoa 2 = vector 1', function () { pm.expect(t.v2).to.eql(t.v1); });",
+          "  pm.test('00 doi Pw->pw ra khoa khac', function () { pm.expect(t.v3).to.eql('e0e605c2828ec10724d9b4efff66ab5e9fcb978e9c318013d6c54d88df4723bc'); });",
+          "  la401();",
+          "} else if (so === '01') {",
+          "  la200(pm.environment.get('chuoiMoi') || null);            // DB da doi => TTTB tra chuoi HIEN TAI (= chuoi moi)",
+          "} else if (so === '05') {",
+          "  la200(pm.environment.get('chuoiMoi'));",
+          "} else if (so === '07') {",
+          "  var c7 = la200(pm.environment.get('chuoiB'));",
+          "  pm.test('07 ma trung: tra dong B, khong nham dong A', function () { pm.expect(layDb(c7)).to.not.eql(layDb(pm.environment.get('chuoiMoi'))); });",
+          "} else {",
+          "  la401();                                                   // 02 gui lai, 03 sai mk, 04 lech gio, 06 chuoi cu sau xoay",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Tự kiểm chuẩn hoá",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Tính khoá của 3 chuỗi mẫu cố định trong script, so với giá trị tính sẵn bằng Python/C#. Gửi body rỗng.\n\n**Kỳ vọng:** 3 phép so ĐẠT + statusCode 401 'Không xác thực được.' — nếu vector lệch thì DỪNG, đừng test tiếp (JS và C# không cùng khoá).\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC\n```"
+      }
+    },
+    {
+      "name": "01 Lấy kết nối (mật khẩu cũ)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** PM khách cầm chuỗi CŨ trong appsettings (biến chuoiCu), DB của nó đã đổi. Ký bằng chuỗi cũ.\n\n**Kỳ vọng:** statusCode 200, mac đúng, giải mã ra chuỗi HIỆN TẠI của đối tác (= chuoiMoi). Console in chuỗi đã che mật khẩu.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC  -- 1 dòng OK, XoayKhoa=0\n```"
+      }
+    },
+    {
+      "name": "02 Gửi lại nguyên gói → 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Gửi lại y nguyên body của bước 01 (cùng giờ, cùng chữ ký).\n\n**Kỳ vọng:** statusCode 401 — chữ ký chỉ dùng được 1 lần.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC  -- thêm 1 dòng GUI_LAI\n```"
+      }
+    },
+    {
+      "name": "03 Sai mật khẩu → 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Ký bằng chuỗi cũ nhưng mật khẩu thêm chữ X.\n\n**Kỳ vọng:** statusCode 401, cùng message.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC  -- SAI_CHU_KY\n```"
+      }
+    },
+    {
+      "name": "04 Giờ lệch 6 phút → 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Ký đúng chuỗi cũ nhưng giờ lùi 6 phút (token sống 5 phút).\n\n**Kỳ vọng:** statusCode 401.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC  -- HET_HAN\n```"
+      }
+    },
+    {
+      "name": "05 Xác nhận (mật khẩu mới) → xoay khoá",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** PM đã nối được DB mới, gọi xác nhận bằng chuỗi MỚI (biến chuoiMoi).\n\n**Kỳ vọng:** statusCode 200, giải mã ra đúng chuoiMoi. Trên DB: KhoaBatTay của dòng đổi sang khoá chuỗi mới, nhật ký XoayKhoa=1.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT Id, TenDoiTac, CONVERT(varchar(66), KhoaBatTay, 1) AS KhoaBatTay FROM HT_DoiTac WHERE Loai='ZZTEST' ORDER BY Id ; SELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC\n```"
+      }
+    },
+    {
+      "name": "06 Mật khẩu cũ sau xoay → 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Ký lại bằng chuỗi CŨ sau khi đã xoay.\n\n**Kỳ vọng:** statusCode 401 — chuỗi cũ hết tác dụng.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC\n```"
+      }
+    },
+    {
+      "name": "07 Mã trùng ZZTEST1 / mk B",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{body}}"
+        },
+        "url": {
+          "raw": "{{diaChi}}/api/layketnoi",
+          "host": [
+            "{{diaChi}}"
+          ],
+          "path": [
+            "api",
+            "layketnoi"
+          ]
+        },
+        "description": "**Làm gì:** Cùng mã ZZTEST1 nhưng ký bằng chuỗi của dòng B (cùng mật khẩu, khác tên DB).\n\n**Kỳ vọng:** statusCode 200, giải mã ra đúng chuỗi dòng B (biến chuoiB), KHÔNG phải dòng A.\n\n**Kiểm DB (SELECT, chỉ đọc):**\n```sql\nSELECT TOP 5 ID, Gio, MaCSKCB, IDDoiTac, KetQua, XoayKhoa FROM HT_NhatKyLayKetNoi WHERE MaCSKCB LIKE 'ZZTEST%' ORDER BY ID DESC\n```"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "maCSKCB",
+      "value": "ZZTEST1"
+    },
+    {
+      "key": "goiLan01",
+      "value": ""
+    }
+  ]
+}

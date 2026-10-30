@@ -1,0 +1,6 @@
+@TrungTamApi_HostAddress = http://localhost:5290
+
+GET {{TrungTamApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
