@@ -38,7 +38,7 @@ export function mountDesktopSettings(main) {
             : value.notification === "failed"
               ? "Chưa gửi được thông báo Windows. Kiểm tra quyền thông báo."
               : value.running
-                ? "Đang theo dõi. Ảnh có PII sẽ có thông báo để mở review."
+                ? "Đang theo dõi. Ảnh có PII hoặc secrets sẽ có cảnh báo để mở review."
                 : "Agent đã kết nối; theo dõi đang tắt.";
   }
   async function check() {

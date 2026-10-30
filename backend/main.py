@@ -21,7 +21,7 @@ def create_app(desktop_agent=None):
 
     instance = FastAPI(
         title="ScreenGuard+ API",
-        version="0.4.0",
+        version="0.5.0",
         description="Local Tesseract OCR and contextual PII detection; no cloud processing or persistent image storage.",
         lifespan=lifespan,
     )

@@ -1,5 +1,5 @@
 // An explicit, immutable app-shell allowlist. Never cache uploads, API responses or findings.
-const CACHE = "screenguard-shell-v8";
+const CACHE = "screenguard-shell-v9";
 const SHELL = [
   "./",
   "./index.html",

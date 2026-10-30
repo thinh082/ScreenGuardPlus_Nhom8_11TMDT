@@ -51,7 +51,7 @@ class Companion:
                 "available": not self._closed.is_set(), "running": running,
                 "state": "Running" if running else "Stopped",
                 "enabled": self.settings.enabled, "folder": self.settings.folder,
-                "error": self.last_error, "notification": self.notifications.last_status,
+                "error": self.last_error or ("watcher_stopped" if self.settings.enabled and not running else None), "notification": self.notifications.last_status,
                 "pending_reviews": self.reviews.count(),
                 "popup_enabled": self.settings.popup_enabled,
                 "popup": self.notifications.popup_status() if hasattr(self.notifications,"popup_status") else {"available":False,"visible":False},

@@ -126,6 +126,11 @@ export function adaptScanResult(result, image) {
     STUDENT_ID: "student",
     BANK_ACCOUNT: "bank",
     CUSTOM: "custom",
+    DB_CREDENTIAL: "db_credential",
+    API_KEY: "api_key",
+    PRIVATE_KEY: "private_key",
+    JWT_TOKEN: "jwt_token",
+    INTERNAL_IP: "internal_ip",
   };
   if (
     result?.mode !== "real_ocr" ||
@@ -142,7 +147,7 @@ export function adaptScanResult(result, image) {
       !types[f.type] ||
       ids.has(f.id) ||
       typeof f.id !== "string" ||
-      !["LOW", "MEDIUM", "HIGH"].includes(f.risk) ||
+      !["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(f.risk) ||
       ![x, y, right, bottom].every(Number.isFinite) ||
       x < 0 ||
       y < 0 ||
@@ -170,7 +175,18 @@ export function adaptScanResult(result, image) {
     };
   });
 
-  return { ...result, status: "complete", source: "ocr", findings };
+  return {
+    ...result,
+    status: "complete",
+    source: "ocr",
+    findings,
+    scan_ticket: result.scan_ticket || "",
+    profile: result.profile || "personal",
+    destination: result.destination || "public",
+    policy_decision: result.policy_decision || "ALLOW",
+    policy_reasons: result.policy_reasons || [],
+    image_hash: result.image_hash || "",
+  };
 }
 export async function getBackendHealth() {
   try {
@@ -206,4 +222,79 @@ export function redactImage(image, selectedFindings) {
     ctx.fillRect(box.x, box.y, box.width, box.height);
   }
   return canvas;
+}
+
+export async function exportSecureImage(
+  ticket,
+  redactions,
+  { destination = "public", confirmedWarnings = [] } = {},
+) {
+  const response = await fetch("./api/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ticket,
+      destination,
+      confirmed_warnings: confirmedWarnings,
+      redactions: redactions.map((b) => ({
+        x: Math.round(b.x),
+        y: Math.round(b.y),
+        width: Math.round(b.width),
+        height: Math.round(b.height),
+      })),
+    }),
+    cache: "no-store",
+  });
+  if (response.status === 403) {
+    const data = await response.json().catch(() => null);
+    const err = new Error(
+      data?.detail?.message || "Xuất ảnh bị chặn theo chính sách bảo mật.",
+    );
+    err.code = "POLICY_BLOCKED";
+    err.reasons = data?.detail?.reasons || [];
+    err.blockedFindings = data?.detail?.blocked_findings || [];
+    throw err;
+  }
+  if (response.status === 400) {
+    const data = await response.json().catch(() => null);
+    const err = new Error(
+      data?.detail?.message || "Cần xác nhận cảnh báo trước khi xuất ảnh.",
+    );
+    err.code = "CONFIRMATION_REQUIRED";
+    err.reasons = data?.detail?.reasons || [];
+    throw err;
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.detail?.message || "Không thể xuất ảnh qua máy chủ.");
+  }
+  const blob = await response.blob();
+  const hash = response.headers.get("X-Image-Hash") || "";
+  const decision = response.headers.get("X-Policy-Decision") || "ALLOW";
+  return { blob, hash, decision };
+}
+
+export async function evaluatePolicyRealtime(
+  ticket,
+  redactions,
+  destination = "public",
+) {
+  if (!ticket) return null;
+  const response = await fetch("./api/policy/evaluate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ticket,
+      destination,
+      redactions: redactions.map((b) => ({
+        x: Math.round(b.x),
+        y: Math.round(b.y),
+        width: Math.round(b.width),
+        height: Math.round(b.height),
+      })),
+    }),
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  return await response.json().catch(() => null);
 }

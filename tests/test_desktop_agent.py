@@ -141,6 +141,47 @@ def test_disable_during_ocr_never_publishes_late_result(agent):
     assert agent.reviews.count() == 0 and not agent.notifications.items
 
 
+def test_dead_watcher_is_not_reported_running_and_can_restart(agent):
+    agent.enable(True)
+    agent.watcher.observer.stop()
+    agent.watcher.observer.join(timeout=2)
+    assert agent.status()["state"] == "Stopped"
+    assert agent.status()["error"] == "watcher_stopped"
+    agent.enable(True)
+    assert agent.status()["running"] is True
+    shutil.copyfile("sample_data/screenshots/email.png", Path(agent.settings.folder) / "after-restart.png")
+    until(lambda: agent.status()["scanned"] == 1)
+    assert agent.status()["error"] is None
+
+
+def test_scan_error_has_safe_diagnostics_and_next_file_can_recover(agent):
+    agent.enable(True)
+    pipeline = agent.watcher.scan
+    def failing(*args):
+        raise RuntimeError("Fictitious private OCR data must never reach diagnostics")
+    agent.watcher.scan = failing
+    shutil.copyfile("sample_data/screenshots/email.png", Path(agent.settings.folder) / "fails.png")
+    until(lambda: agent.status()["error"] == "scan_failed")
+    assert agent.notifications.items == []
+    assert "private OCR" not in json.dumps(agent.status())
+    agent.watcher.scan = pipeline
+    shutil.copyfile("sample_data/screenshots/email.png", Path(agent.settings.folder) / "recovers.png")
+    until(lambda: len(agent.notifications.items) == 1)
+    assert agent.status()["running"] is True and agent.status()["error"] is None
+
+
+def test_notification_failure_keeps_review_available(agent):
+    def fail(count, key):
+        agent.notifications.last_status = "failed"
+        return False
+    agent.notifications.notify = fail
+    agent.enable(True)
+    shutil.copyfile("sample_data/screenshots/email.png", Path(agent.settings.folder) / "notification-failure.png")
+    until(lambda: agent.status()["notification"] == "failed")
+    assert agent.status()["pending_reviews"] == 1
+    assert agent.status()["running"] is True
+
+
 def test_jpeg_exif_review_matches_ocr_geometry_and_strips_metadata(agent):
     agent.enable(True)
     with Image.open("sample_data/screenshots/all.png") as source:

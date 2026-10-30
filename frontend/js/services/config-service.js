@@ -54,12 +54,23 @@ export const DATA_TYPES = [
     description: "Mở rộng phạm vi với từ khóa hoặc biểu thức riêng.",
   },
 ];
+export const SECRET_TYPES = [
+  { id: "db_credential", name: "Mật khẩu / connection string" },
+  { id: "api_key", name: "API key / access token" },
+  { id: "private_key", name: "Private key" },
+  { id: "jwt_token", name: "JWT token" },
+  { id: "internal_ip", name: "Mạng nội bộ (chế độ IT / DevOps)" },
+];
 export const DEFAULT_CONFIG = {
-  types: Object.fromEntries(DATA_TYPES.map((t) => [t.id, true])),
+  types: Object.fromEntries(
+    [...DATA_TYPES, ...SECRET_TYPES].map((t) => [t.id, true]),
+  ),
   rules: [],
   mode: "auto",
   sensitivity: "balanced",
   language: "vie+eng",
+  profile: "personal",
+  destination: "public",
 };
 const KEY = "screenguard.config.v1";
 let memory = structuredClone(DEFAULT_CONFIG);
@@ -71,11 +82,26 @@ export function validateConfig(config) {
     !["vie", "eng", "vie+eng"].includes(config.language)
   )
     throw new Error("Cấu hình không hợp lệ.");
+  if (!config.profile || !["personal", "security"].includes(config.profile)) {
+    config.profile = "personal";
+  }
+  if (
+    !config.destination ||
+    !["public", "internal"].includes(config.destination)
+  ) {
+    config.destination = "public";
+  }
   if (
     !config.types ||
     DATA_TYPES.some((t) => typeof config.types[t.id] !== "boolean")
   )
     throw new Error("Loại dữ liệu không hợp lệ.");
+  for (const type of SECRET_TYPES) {
+    // Migrate saved Phase 4 configurations without resetting PII preferences.
+    if (config.types[type.id] === undefined) config.types[type.id] = true;
+    if (typeof config.types[type.id] !== "boolean")
+      throw new Error("Loại secrets không hợp lệ.");
+  }
   if (!Array.isArray(config.rules) || config.rules.length > 30)
     throw new Error("Tối đa 30 quy tắc tùy chỉnh.");
   const ids = new Set();

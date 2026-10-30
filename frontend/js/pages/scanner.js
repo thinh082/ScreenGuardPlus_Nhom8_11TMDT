@@ -1,14 +1,18 @@
 import { icon } from "../components/icons.js";
 import { escapeHTML, toast } from "../components/ui.js";
 import { scannerView } from "../components/scanner-view.js";
-import { getDetectionConfig } from "../services/config-service.js";
 import { createDemoCanvas, DEMO_ID } from "../services/mock-scanner.js";
 import { loadDesktopReview } from "../services/desktop-service.js";
 import {
   decodeImage,
   scanImage,
   redactImage,
+  exportSecureImage,
 } from "../services/scanner-service.js";
+import {
+  getDetectionConfig,
+  updateDetectionConfig,
+} from "../services/config-service.js";
 
 export function scannerPage(main) {
   let original = null,
@@ -25,7 +29,9 @@ export function scannerPage(main) {
     disposed = false,
     generation = 0,
     cameraGeneration = 0,
-    activeFinding = null;
+    activeFinding = null,
+    scanTicket = null,
+    scanProfile = "personal";
   main.innerHTML = scannerView();
   const $ = (selector) => main.querySelector(selector);
   // A loading state above the preview remains visible on compact screens.
@@ -74,6 +80,8 @@ export function scannerPage(main) {
   function invalidateRedaction() {
     redacted = null;
     view = "before";
+    const hashEl = $("#export-hash-pill");
+    if (hashEl) hashEl.hidden = true;
     $("#view-after").disabled = true;
     $("#download-image").disabled = true;
   }
@@ -137,7 +145,7 @@ export function scannerPage(main) {
       ? findings
           .map(
             (f) =>
-              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
+              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "critical" ? '<i class="risk-dot critical-dot" aria-label="Rủi ro cực cao"></i>' : f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
           )
           .join("")
       : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
@@ -159,6 +167,34 @@ export function scannerPage(main) {
     $("#start-scan").disabled = busy || !original;
     $("#retry-scan").disabled = busy;
     $("#error-manual").disabled = busy;
+    $("#profile-select").disabled = busy;
+    $("#destination-select").disabled = busy;
+    const banner = $("#policy-banner");
+    if (banner) {
+      if (!findings.length || !original) {
+        banner.hidden = true;
+      } else {
+        const dest = $("#destination-select")?.value || "public";
+        const isCritical = (f) => (f.risk || "").toLowerCase() === "critical";
+        const remaining = redacted
+          ? findings.filter((f) => !selected.has(f.id))
+          : findings;
+        const mandatory = remaining.some(
+          (f) =>
+            isCritical(f) ||
+            (scanProfile === "security" &&
+              dest === "public" &&
+              ["cccd", "bank"].includes(f.type)),
+        );
+        banner.hidden = !!fixtureId;
+        banner.className = `policy-banner ${mandatory ? "policy-blocked" : remaining.length ? "policy-warning" : "policy-allowed"}`;
+        banner.textContent = mandatory
+          ? "CHẶN XUẤT ẢNH: Còn vùng bắt buộc che."
+          : remaining.length
+            ? "Còn thông tin chưa che. Cần xác nhận khi tải ảnh."
+            : "Đã che các vùng đã chọn. Hãy kiểm tra lại ảnh.";
+      }
+    }
     if (focusedCheckbox)
       $("#findings-list")
         .querySelector(`[data-finding="${CSS.escape(focusedCheckbox)}"]`)
@@ -193,6 +229,8 @@ export function scannerPage(main) {
     controller = new AbortController();
     const localController = controller;
     const scanGeneration = generation;
+    scanTicket = null;
+    scanProfile = getDetectionConfig().profile;
     setError();
     $("#scan-warnings").textContent = "";
     findings = findings.filter((f) => f.type === "manual");
@@ -228,6 +266,8 @@ export function scannerPage(main) {
         scanGeneration !== generation
       )
         return;
+      scanTicket = result.scan_ticket || null;
+      scanProfile = result.profile || scanProfile;
       const manual = findings.filter((f) => f.type === "manual");
       findings = [...result.findings, ...manual];
       selected = new Set(findings.map((f) => f.id));
@@ -272,6 +312,8 @@ export function scannerPage(main) {
     controller?.abort();
     busy = false;
     original = canvas;
+    scanTicket = null;
+    scanProfile = getDetectionConfig().profile;
     fixtureId = id;
     activeFinding = null;
     $("#advanced-tools").open = false;
@@ -301,6 +343,11 @@ export function scannerPage(main) {
     setError();
     renderFindings();
     if (scanned) {
+      scanTicket = scanned.scan_ticket || null;
+      scanProfile = scanned.profile || scanProfile;
+      $("#profile-select").value = scanProfile;
+      $("#destination-select").value =
+        scanned.destination || getDetectionConfig().destination;
       findings = scanned.findings;
       selected = new Set(findings.map((f) => f.id));
       $("#result-status").textContent = scanned.message;
@@ -345,6 +392,7 @@ export function scannerPage(main) {
     generation++;
     controller?.abort();
     original = null;
+    scanTicket = null;
     activeFinding = null;
     redacted = null;
     fixtureId = null;
@@ -632,10 +680,73 @@ export function scannerPage(main) {
       setError(error.message);
     }
   };
-  $("#download-image").onclick = () => {
+  $("#download-image").onclick = async () => {
     if (!redacted || busy) return;
     const exportCanvas = redacted,
       exportGeneration = generation;
+
+    if (scanTicket && !fixtureId) {
+      setBusy(true);
+      setError("");
+      try {
+        const dest = $("#destination-select")?.value || "public";
+        const selectedBoxes = findings
+          .filter((f) => selected.has(f.id))
+          .map((f) => f.box);
+        let exported;
+        try {
+          exported = await exportSecureImage(scanTicket, selectedBoxes, {
+            destination: dest,
+          });
+        } catch (err) {
+          if (
+            disposed ||
+            exportGeneration !== generation ||
+            exportCanvas !== redacted
+          )
+            return;
+          if (err.code !== "CONFIRMATION_REQUIRED") throw err;
+          if (
+            !window.confirm(
+              "Ảnh còn thông tin chưa che hoặc vùng OCR chưa rõ. Bạn đã kiểm tra và vẫn muốn tải ảnh này?",
+            )
+          )
+            return;
+          exported = await exportSecureImage(scanTicket, selectedBoxes, {
+            destination: dest,
+            confirmedWarnings: err.reasons,
+          });
+        }
+        const { blob, hash } = exported;
+        if (disposed || exportGeneration !== generation) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "screenguard-protected.png";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast("Đã tải ảnh đã che.");
+        const hashEl = $("#export-hash-pill");
+        if (hashEl) {
+          hashEl.hidden = false;
+          hashEl.textContent = `SHA-256: ${hash.slice(0, 16)}...`;
+          hashEl.title = `Mã băm toàn vẹn: ${hash}`;
+        }
+      } catch (err) {
+        if (disposed || exportGeneration !== generation) return;
+        if (err.code === "POLICY_BLOCKED") {
+          setError(
+            "Còn vùng bắt buộc che. Hãy chọn vùng và che lại trước khi tải.",
+          );
+        } else {
+          setError(err.message || "Xuất ảnh thất bại.");
+        }
+      } finally {
+        if (!disposed && exportGeneration === generation) setBusy(false);
+      }
+      return;
+    }
+
     exportCanvas.toBlob((blob) => {
       if (
         disposed ||
@@ -738,6 +849,26 @@ export function scannerPage(main) {
   const resize = new ResizeObserver(() => paint());
   resize.observe(preview);
   // Only rerender on CSS size changes: resizing backing pixels can trigger observers in some engines.
+  const profileSelect = $("#profile-select");
+  const destSelect = $("#destination-select");
+  if (profileSelect) {
+    profileSelect.value = getDetectionConfig().profile || "personal";
+    profileSelect.onchange = (e) => {
+      const cfg = getDetectionConfig();
+      cfg.profile = e.target.value;
+      updateDetectionConfig(cfg);
+      if (original) runScan();
+    };
+  }
+  if (destSelect) {
+    destSelect.value = getDetectionConfig().destination || "public";
+    destSelect.onchange = (e) => {
+      const cfg = getDetectionConfig();
+      cfg.destination = e.target.value;
+      updateDetectionConfig(cfg);
+      renderFindings();
+    };
+  }
   renderFindings();
   const reviewId = new URLSearchParams(location.hash.split("?")[1] || "").get(
     "review",

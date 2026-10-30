@@ -51,7 +51,7 @@ test("upgrade replaces a cached old Settings page on reload without clearing sit
   await expect(page.locator("#agent-state")).toHaveText("Stopped");
   await expect
     .poll(() => page.evaluate(() => caches.keys()))
-    .toEqual(["screenguard-shell-v8"]);
+    .toEqual(["screenguard-shell-v9"]);
   await page.screenshot({
     path: "test-results/pwa-settings-updated.png",
     fullPage: true,

@@ -173,3 +173,38 @@ focus/online. Không tự reload ảnh đang chỉnh. PWA đã mở cần Ctrl+S
 Hai bài E2E mới dựng worker legacy v5: cập nhật rồi reload hiện mục Windows mà
 không xóa site data; cập nhật trong Scanner giữ nguyên ảnh đang review. Hai bài này
 và ba bài responsive/theme đều đạt. Kiểm thử offline shell cũng được giữ lại.
+
+## Phase 5 — OCR secrets và Windows Agent (2026-10-30)
+
+Nguyên nhân trực tiếp: bản nháp chỉ gọi secrets detector khi profile là `security`;
+cấu hình PWA/agent cũ mặc định `personal`. Regex cũng bỏ sót khoảng trắng OCR thêm
+vào URI và nhãn cấu hình có dấu nháy. Pipeline nay chạy secrets theo công tắc loại
+dữ liệu ở cả hai profile, giữ nguyên PII. Chỉ thông tin mạng nội bộ cần `security`.
+
+- **124 Python tests đạt** (`python -m pytest -q`): gồm PII cũ, ảnh PNG tổng hợp
+  `DATABASE_PASSWORD=DemoPass123!` qua Tesseract thật, URI/SQL/API/token/JWT/PEM,
+  EMAIL cùng ảnh, tắt từng detector, placeholder, Watchdog tạo file thật, chống
+  trùng, dừng agent và ảnh corrupt/đang ghi. Không giả findings trong integration.
+- **8 JavaScript tests đạt** (`npm test`): gồm migration cấu hình PII cũ, mặc định
+  secrets, validation và adapter multipart/export.
+- Playwright kiểm tra ảnh password ở profile mặc định và luồng agent khi PWA đóng:
+  nhận cảnh báo → đúng ảnh/bounding boxes → không gọi OCR lại → che → API xuất PNG.
+  Có kiểm tra 403 khi thiếu vùng bắt buộc, không tải file khi bị chặn; PII cá nhân
+  chưa che chỉ xuất sau xác nhận thật. Kết quả lượt toàn bộ được ghi sau khi chạy.
+- Native smoke trên Windows dùng thư mục thử riêng được cấp quyền, không cần PWA:
+  `running=true`, `scanned=1`, `findings=1`, `DB_CREDENTIAL`, toast `submitted`,
+  Windows toast history có 1 mục; popup IPC `available=true`, `visible=true`,
+  `failed=false`; `error=null`. Đóng agent và dọn toast sau smoke.
+- Kiểm tra live server cổng 8000: `/api/health` phase 5, companion Running và
+  không có lỗi; API đọc ảnh password thật trả `DB_CREDENTIAL`.
+- Secure export kiểm tra đủ hợp các vùng che, không cộng trùng diện tích; kiểm tra
+  toàn bộ pixel finding đã che và từ chối tọa độ ngoài ảnh. Ticket giới hạn 50 mục,
+  64 MiB/10 phút, tự xóa khi idle. SHA-256 trả qua `X-Image-Hash`.
+
+**Giới hạn xác minh:** chưa thao tác phím Win+PrtScn/click toast vật lý trong lượt
+này. Test đã xác minh sự kiện file Windows thật, OCR thật và gửi notification
+native; recorder trình duyệt không được tính là native delivery. Clipboard chưa
+triển khai. Phím chụp chỉ lưu clipboard sẽ không kích hoạt watcher nếu không có file
+mới trong thư mục được phép. OCR vẫn có thể bỏ sót; không có cam kết an toàn tuyệt đối.
+
+Chi tiết vận hành và chính sách: [PHASE5](PHASE5.md).

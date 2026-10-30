@@ -10,6 +10,7 @@ import { DEMO_ID, mockScan } from "../frontend/js/services/mock-scanner.js";
 import {
   validateImage,
   scanImage,
+  exportSecureImage,
   MAX_BYTES,
 } from "../frontend/js/services/scanner-service.js";
 import { escapeHTML } from "../frontend/js/components/ui.js";
@@ -50,6 +51,8 @@ test("real adapter sends multipart configuration to same-origin backend and neve
       findings: [],
       language: "eng",
       warnings: [],
+      scan_ticket: "ticket-xyz",
+      policy_decision: "ALLOW",
     });
   };
   try {
@@ -63,6 +66,7 @@ test("real adapter sends multipart configuration to same-origin backend and neve
     assert.equal(result.status, "complete");
     assert.deepEqual(result.findings, []);
     assert.equal(result.source, "ocr");
+    assert.equal(result.scan_ticket, "ticket-xyz");
     globalThis.fetch = async () => {
       throw new TypeError("offline");
     };
@@ -116,4 +120,51 @@ test("dynamic user text is escaped before rendering", () => {
     escapeHTML('<img src=x onerror="alert(1)">'),
     "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
   );
+});
+
+test("legacy PII settings gain secret defaults without resetting disabled types", () => {
+  const config = structuredClone(DEFAULT_CONFIG);
+  delete config.profile;
+  delete config.destination;
+  for (const key of [
+    "db_credential",
+    "api_key",
+    "private_key",
+    "jwt_token",
+    "internal_ip",
+  ])
+    delete config.types[key];
+  config.types.email = false;
+  const migrated = validateConfig(config);
+  assert.equal(migrated.profile, "personal");
+  assert.equal(migrated.types.email, false);
+  assert.equal(migrated.types.db_credential, true);
+  migrated.types.db_credential = false;
+  assert.equal(validateConfig(migrated).types.db_credential, false);
+});
+test("exportSecureImage sends ticket and redactions to /api/export", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    assert.equal(url, "./api/export");
+    assert.equal(options.method, "POST");
+    const body = JSON.parse(options.body);
+    assert.equal(body.ticket, "ticket-123");
+    assert.equal(body.destination, "public");
+    return new Response(new Blob(["safe-png"], { type: "image/png" }), {
+      status: 200,
+      headers: {
+        "X-Image-Hash": "hash123",
+        "X-Policy-Decision": "ALLOW",
+      },
+    });
+  };
+  try {
+    const { hash, decision } = await exportSecureImage("ticket-123", [
+      { x: 10, y: 10, width: 50, height: 20 },
+    ]);
+    assert.equal(hash, "hash123");
+    assert.equal(decision, "ALLOW");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

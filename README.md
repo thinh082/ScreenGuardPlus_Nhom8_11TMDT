@@ -1,10 +1,10 @@
-# ScreenGuard+ · Phase 4
+# ScreenGuard+ · Phase 5
 
 PWA tiếng Việt để **OCR ảnh thật, tìm thông tin cá nhân, chọn vùng che và tải PNG**.
 Workspace ảnh tối giản, hỗ trợ nền sáng/tối và giữ toàn bộ thao tác thủ công.
 Windows Companion có thể tự OCR ảnh mới trong thư mục Screenshots đã cho phép,
 gửi thông báo local và mở PWA để review, kể cả khi PWA đang đóng.
-Khi có PII, cửa sổ cảnh báo nổi giữa màn hình và giữ đến khi đóng/mở review (hoặc
+Khi có PII hoặc secrets, cửa sổ cảnh báo nổi giữa màn hình và giữ đến khi đóng/mở review (hoặc
 phiên hết hạn). Nút chuông trên thanh đầu mở mục **Thông báo** với các ảnh chờ.
 Phát triển trên nhánh `tuvy1`; không sửa `main`.
 
@@ -183,15 +183,23 @@ skip với lý do, không giả OCR để báo pass. Tóm tắt TC01–TC13 ở 
 Tạo lại ảnh hư cấu: `python sample_data/generate_samples.py` (cần Arial/DejaVu Sans).
 Tạo lại icon: `python scripts/generate_icons.py`.
 
+## Phase 5 - OCR secrets & local export policy
+
+[Nhận diện secrets, profile, luồng Windows và hướng dẫn kiểm thử](docs/PHASE5.md).
+
 ## Cấu trúc
 
-- `frontend/js/services/scanner-service.js`: multipart client, validation findings,
-  adapter cho Canvas; mock nằm riêng trong `mock-scanner.js`.
-- `backend/api/`: health, validation, giới hạn multipart, scan worker.
+- `frontend/js/services/scanner-service.js`: multipart client, validation findings, adapter Canvas, exportSecureImage.
+- `backend/api/`: health, validation, giới hạn multipart, scan worker, policy evaluation, secure export.
 - `core/ocr.py`: Tesseract, EXIF/RGB, token/line/span mapping, language fallback.
 - `core/detector.py`, `core/rules.py`: luật PII, context, dedup, Regex có timeout.
+- `core/secrets_detector.py`: bộ nhận diện bí mật kỹ thuật (DB credentials, API keys, JWT, Private keys, Internal IPs).
+- `core/policy_engine.py`: công cụ đánh giá chính sách DLP (ALLOW / WARN / BLOCK) và kiểm tra diện tích che phủ.
+- `core/ticket_store.py`: kho lưu trữ vé quét an toàn (in-memory ticket store với TTL).
+- `core/export_verifier.py`: xác minh điểm ảnh sau khi che, xóa sạch EXIF và tạo mã băm toàn vẹn SHA-256.
 - `core/models.py`, `core/pipeline.py`: contracts và ghép pipeline thực tế.
-- `core/redactor.py`: redactor Python tùy chọn; UI tiếp tục dùng Canvas đã kiểm thử.
+- `core/redactor.py`: redactor Python cũ; Canvas giữ preview/đánh dấu thủ công,
+  phiên có ticket tải PNG qua redactor và policy server.
 
 Xem [hợp đồng tích hợp](docs/INTEGRATION.md). Tham khảo chính thức:
 [pytesseract](https://github.com/madmaze/pytesseract),

@@ -118,6 +118,10 @@ test("real five-type findings link list, keyboard and image boxes; unselected ac
     "Đã che 4 vùng",
   );
   const pendingDownload = page.waitForEvent("download");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.type()).toBe("confirm");
+    await dialog.accept();
+  });
   await page.locator("#download-image").click();
   const exported = await readFile(await (await pendingDownload).path());
   const original = await readFile("sample_data/screenshots/all.png");

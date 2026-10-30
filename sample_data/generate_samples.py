@@ -15,6 +15,7 @@ CASES = {
     "bank_difficult": [("Account number:", "123456789012")],
     "clean": [("Project:", "ScreenGuard Plus"), ("Status:", "Ready for review")],
     "custom": [("Reference:", "NV-246810"), ("Classification:", "CONFIDENTIAL")],
+    "secrets": [("DATABASE_PASSWORD=", "DemoPass123!"), ("API_KEY=", "DemoApiKey1234567890ABCDEF")],
     "split": [("Email:", "test.screenguard @ example.com"), ("Phone:", "090 000 0000")],
     "vietnamese": [("Căn cước công dân:", "000000000000"), ("Số tài khoản:", "111111111111"), ("Mã sinh viên:", "SV20260001")],
 }

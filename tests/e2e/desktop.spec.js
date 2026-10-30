@@ -4,6 +4,108 @@ import { mkdtemp, readFile, copyFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+test("new secret screenshot alerts with PWA closed and opens an exportable review", async ({
+  browser,
+}) => {
+  test.setTimeout(45000);
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "screenguard-secret-e2e-"),
+  );
+  const port = 8018;
+  const baseURL = `http://127.0.0.1:${port}`;
+  const server = spawn(
+    "python",
+    [
+      "tests/support/desktop_server.py",
+      "--port",
+      String(port),
+      "--directory",
+      directory,
+    ],
+    { stdio: "ignore", windowsHide: true },
+  );
+  let context;
+  try {
+    await expect
+      .poll(async () => {
+        try {
+          return (await fetch(`${baseURL}/api/health`)).ok;
+        } catch {
+          return false;
+        }
+      })
+      .toBe(true);
+    context = await browser.newContext({ baseURL, acceptDownloads: true });
+    let page = await context.newPage();
+    await page.goto("/#/settings");
+    await page.locator("#agent-choose-folder").click();
+    await expect(page.locator("#agent-folder")).toContainText("Screenshots");
+    await page.locator("#agent-enabled").check();
+    await expect(page.locator("#agent-state")).toHaveText("Running");
+    await page.close();
+    await copyFile(
+      "sample_data/screenshots/secrets.png",
+      path.join(directory, "Screenshots", "new-secret.png"),
+    );
+    let entries;
+    await expect
+      .poll(
+        async () => {
+          try {
+            entries = JSON.parse(
+              await readFile(
+                path.join(directory, "notifications.json"),
+                "utf8",
+              ),
+            );
+            return entries.length;
+          } catch {
+            return 0;
+          }
+        },
+        { timeout: 15000 },
+      )
+      .toBe(1);
+    expect(entries[0].count).toBe(2);
+    page = await context.newPage();
+    let scans = 0;
+    page.on("request", (r) => {
+      if (r.url().endsWith("/api/scan")) scans++;
+    });
+    const reviewed = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/desktop/reviews/") &&
+        r.request().method() === "GET",
+    );
+    await page.goto(`/#/scanner?review=${entries[0].id}`);
+    const result = (await (await reviewed).json()).result;
+    expect(result.findings.map((f) => f.type)).toEqual([
+      "DB_CREDENTIAL",
+      "API_KEY",
+    ]);
+    await expect(page.locator("#finding-title")).toContainText("2 vùng");
+    expect(scans).toBe(0);
+    await page.locator("#redact-selected").click();
+    const exported = page.waitForResponse((r) =>
+      r.url().endsWith("/api/export"),
+    );
+    const downloaded = page.waitForEvent("download");
+    await page.locator("#download-image").click();
+    expect((await exported).status()).toBe(200);
+    await downloaded;
+    await expect(page.locator("#export-hash-pill")).toContainText("SHA-256");
+  } finally {
+    if (context) await context.close();
+    const stopped = new Promise((resolve) => server.once("exit", resolve));
+    server.kill();
+    await Promise.race([
+      stopped,
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("local agent works with PWA closed; notification review reuses real OCR and exports opaque PNG", async ({
   browser,
 }) => {

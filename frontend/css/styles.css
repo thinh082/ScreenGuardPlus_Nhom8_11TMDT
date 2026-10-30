@@ -1105,7 +1105,8 @@ main:focus {
   border-radius: var(--radius);
   padding: 0 20px;
 }
-.protection-row {
+.protection-row,
+.secret-row {
   display: flex;
   gap: 14px;
   align-items: center;
@@ -1114,10 +1115,12 @@ main:focus {
   border-bottom: 1px solid var(--line);
 }
 .protection-row:last-child,
+.secret-row:last-child,
 .setting-row:last-child {
   border-bottom: 0;
 }
-.protection-row > .icon {
+.protection-row > .icon,
+.secret-row > .icon {
   width: 19px;
   height: 19px;
   color: var(--muted);
@@ -1968,11 +1971,13 @@ dialog::backdrop {
   .setting-list {
     padding-inline: 16px;
   }
-  .protection-row {
+  .protection-row,
+  .secret-row {
     gap: 12px;
     min-height: 68px;
   }
-  .protection-row > .icon {
+  .protection-row > .icon,
+  .secret-row > .icon {
     width: 18px;
     height: 18px;
   }
@@ -2139,4 +2144,64 @@ dialog::backdrop {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Phase 5: DLP Policy & Secrets Styles */
+.risk-dot.critical-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+.workspace-top-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.security-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.security-controls select {
+  width: auto;
+  font-size: 12px;
+  padding: 4px 8px;
+  max-width: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.policy-banner {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.policy-banner.policy-blocked {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--danger);
+}
+.policy-banner.policy-allowed {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--accent);
+}
+.policy-banner.policy-warning {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+.export-hash-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin: 6px 0;
+  word-break: break-all;
+  text-align: center;
+  border: 1px solid var(--line);
 }

@@ -13,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from core.pipeline import run_pipeline
+from core.ticket_store import ticket_store
 from core.validator import MAX_BYTES, ImageValidationError, validate_image
 from desktop_agent.settings import allowed_folder
 
@@ -90,13 +91,14 @@ class ScreenshotWatcher(FileSystemEventHandler):
         self._pending = OrderedDict()
         self._known = OrderedDict()
         self._seen = OrderedDict()
+        self._tickets = set()
         self.stopped = threading.Event()
         self.worker = threading.Thread(target=self._work, daemon=True, name="screenguard-ocr")
         self.scanned = self.duplicates = self.rejected = self.dropped = 0
 
     @property
     def running(self):
-        return not self.stopped.is_set() and self.observer.is_alive() and self.worker.is_alive() and all(e.is_alive() for e in self.observer.emitters)
+        return not self.stopped.is_set() and self.root.is_dir() and self.observer.is_alive() and self.worker.is_alive() and bool(self.observer.emitters) and all(e.is_alive() for e in self.observer.emitters)
 
     def start(self):
         # No enumeration or scan of old images. Only events after this consent point.
@@ -109,6 +111,9 @@ class ScreenshotWatcher(FileSystemEventHandler):
         self.observer.stop()
         with self._condition:
             self._pending.clear()
+            for key in self._tickets:
+                ticket_store.invalidate_ticket(key)
+            self._tickets.clear()
             self._condition.notify_all()
         if self.observer.is_alive():
             self.observer.join(timeout=2)
@@ -183,8 +188,14 @@ class ScreenshotWatcher(FileSystemEventHandler):
             if self.stopped.is_set():
                 return
             result = self.scan(image, self.get_config(), "image/png")
-            if self.stopped.is_set():
-                return
+            with self._condition:
+                if self.stopped.is_set() or not result.findings:
+                    ticket_store.invalidate_ticket(result.scan_ticket)
+                elif result.scan_ticket:
+                    self._tickets = {key for key in self._tickets if ticket_store.get_ticket(key)}
+                    self._tickets.add(result.scan_ticket)
+                if self.stopped.is_set():
+                    return
             self._seen[digest] = True
             while len(self._seen) > 512:
                 self._seen.popitem(last=False)
