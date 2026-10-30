@@ -48,17 +48,9 @@ GOOGLE_API_KEY_PATTERN = re.compile(
 BEARER_TOKEN_PATTERN = re.compile(
     r"(?i)\bBearer\s+(?P<token>[a-zA-Z0-9_@+/=\-\.]{25,})",
 )
-# 2FA Authenticator Secrets & Masked Secrets
+# 2FA/TOTP shared secrets
 TWO_FACTOR_SECRET_PATTERN = re.compile(
-    r"""(?i)\b(?P<label>2fa|two[_\s-]*factor|totp|otp[_\s-]*(?:secret|key)?|auth(?:enticator)?[_\s-]*key|ma[_\s-]*2fa|[0-9oq2z]?[fe7p][a4])\b\s*[:=\s-]\s*(?P<secret>[A-Za-z0-9#_]{16,64})\b""",
-)
-
-MASKED_SECRET_PATTERN = re.compile(
-    r"""(?i)\b(?P<label>pass(?:word)?|pwd|mat[_\s-]*khau|2fa|totp|otp|pin|[0-9oq2z]?[fe7p][a4])\b\s*[:=\s-]\s*(?P<secret>[s•\*\.]{4,20})(?=$|\s)""",
-)
-
-UI_PASSWORD_PATTERN = re.compile(
-    r"""(?i)\b(?P<label>pass(?:word)?|pwd|mat[_\s-]*khau)\b\s*[:=\s-]\s*(?P<secret>[^\s]{6,64})\b""",
+    r"""(?i)(?<!\w)(?P<label>2[ \t]*fa|two[_ \t-]*factor(?:[_ \t-]*(?:secret|key))?|totp(?:[_ \t-]*(?:secret|key))?|otp[_ \t-]*(?:secret|key)|authenticator[_ \t-]*(?:secret|key)|m[aã][_ \t-]*2fa)\b[ \t:=_\-\.~|#;,]*['"]?(?P<secret>[A-Z2-7]{16,64})(?![A-Z0-9_])""",
 )
 
 GENERIC_API_KEY_PATTERN = re.compile(
@@ -322,34 +314,6 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
                     risk="critical",
                     score=0.95,
                 )
-            for match in MASKED_SECRET_PATTERN.finditer(text):
-                start, end = match.span("secret")
-                lbl = match.group("label").lower()
-                is_2fa = "2fa" in lbl or "fa" in lbl or "otp" in lbl or "totp" in lbl
-                add_finding(
-                    idx,
-                    start,
-                    end,
-                    "api_key" if is_2fa else "db_credential",
-                    "Mã 2FA (che ký tự)" if is_2fa else "Mật khẩu (che ký tự)",
-                    risk="high",
-                    score=0.90,
-                )
-
-        if getattr(config.types, "db_credential", True):
-            for match in UI_PASSWORD_PATTERN.finditer(text):
-                sec = match.group("secret").strip().strip("'\"").lower()
-                if sec not in {"chưa có", "chua co", "none", "null", "undefined", "empty", "true", "false", "n/a", "khong co", "không có"}:
-                    start, end = match.span("secret")
-                    add_finding(
-                        idx,
-                        start,
-                        end,
-                        "db_credential",
-                        "Mật khẩu tài khoản",
-                        risk="critical",
-                        score=0.92,
-                    )
 
         # C. API Keys & Cloud Credentials
         if getattr(config.types, "api_key", True):
