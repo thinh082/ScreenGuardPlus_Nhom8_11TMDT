@@ -198,3 +198,27 @@ def test_application_prefixes_and_secret_type_toggles(text):
     assert any(f.type == "api_key" for f in detect_secrets(fake_ocr(text), config))
     config.types.api_key = False
     assert detect_secrets(fake_ocr(text), config) == []
+
+
+def test_two_factor_and_ui_password_detection():
+    # 2FA Authenticator TOTP Secret
+    ocr_2fa = fake_ocr("2FA Q6NT57WIEIR63ZLYFCUXLPYQIF6KKZXZ")
+    findings = detect_secrets(ocr_2fa, DetectionConfig(profile="security"))
+    assert any(f.type == "api_key" and "2FA" in f.label and f.risk == "critical" for f in findings)
+
+    # Masked secret bullets
+    ocr_mask = fake_ocr("2FA ........", "Pass ••••••••")
+    find_mask = detect_secrets(ocr_mask, DetectionConfig(profile="security"))
+    assert len(find_mask) == 2
+    assert any("2FA" in f.label for f in find_mask)
+    assert any("Mật khẩu" in f.label for f in find_mask)
+
+    # UI Password field with space separator
+    ocr_pw = fake_ocr("Pass MySecretKey123!")
+    find_pw = detect_secrets(ocr_pw, DetectionConfig(profile="security"))
+    assert any(f.type == "db_credential" and f.risk == "critical" for f in find_pw)
+
+    # UI Pass placeholder 'Chưa có' should be ignored
+    ocr_none = fake_ocr("Pass Chưa có", "Pass none")
+    find_none = detect_secrets(ocr_none, DetectionConfig(profile="security"))
+    assert len(find_none) == 0

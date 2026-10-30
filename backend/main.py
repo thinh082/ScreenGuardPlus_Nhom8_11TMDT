@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
+from core.resources import get_frontend_dir
 from backend.api.routes import router
 from backend.api.desktop import router as desktop_router, DesktopAccess
 
@@ -30,7 +31,7 @@ def create_app(desktop_agent=None):
     instance.middleware("http")(privacy_headers)
     instance.include_router(router, prefix="/api")
     instance.include_router(desktop_router, prefix="/api")
-    instance.mount("/", StaticFiles(directory=Path(__file__).resolve().parents[1] / "frontend", html=True), name="frontend")
+    instance.mount("/", StaticFiles(directory=get_frontend_dir(), html=True), name="frontend")
     return instance
 
 

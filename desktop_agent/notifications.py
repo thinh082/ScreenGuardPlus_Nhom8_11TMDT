@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 from desktop_agent.popup import DesktopPopup
+from core.resources import get_icon_path
 
 
 class WindowsNotifications:
@@ -36,7 +37,8 @@ class WindowsNotifications:
         app_id = "ScreenGuardPlus.Companion"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, rf"Software\Classes\AppUserModelId\{app_id}") as key:
             winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "ScreenGuard+")
-            winreg.SetValueEx(key, "IconUri", 0, winreg.REG_SZ, str(Path(__file__).resolve().parents[1] / "frontend/icons/icon-192.png"))
+            icon_path = get_icon_path("icon-192.png")
+            winreg.SetValueEx(key, "IconUri", 0, winreg.REG_SZ, str(icon_path) if icon_path.is_file() else "")
         self._toaster = WindowsToaster(app_id)
 
     def notify(self, count: int, review_id: str) -> bool:

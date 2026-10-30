@@ -23,3 +23,11 @@ obj/
 [Oo]bj/
 .DS_Store
 Thumbs.db
+
+# Windows packaging artifacts
+dist/
+build/
+output/
+*.exe
+*.msi
+*.zip
