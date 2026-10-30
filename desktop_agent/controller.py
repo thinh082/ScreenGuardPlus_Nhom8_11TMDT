@@ -128,7 +128,42 @@ class Companion:
                         self.last_scan = {"completed_at":datetime.now(timezone.utc).isoformat(),"findings":len(findings.findings)}
                         if findings.findings:
                             key = self.reviews.put(image, findings)
-                            self.notifications.notify(len(findings.findings), key)
+                            categories = []
+                            for f in findings.findings:
+                                lbl = getattr(f, "label", "") or ""
+                                typ = getattr(f, "type", "") or ""
+                                if "2fa" in lbl.lower() or "totp" in lbl.lower():
+                                    cat = "Mã 2FA"
+                                elif typ == "db_credential" or "mật khẩu" in lbl.lower() or "password" in lbl.lower():
+                                    cat = "Mật khẩu"
+                                elif typ == "api_key":
+                                    cat = "API Key"
+                                elif typ == "jwt_token":
+                                    cat = "Token"
+                                elif typ == "email":
+                                    cat = "Email"
+                                elif typ == "phone":
+                                    cat = "Số điện thoại"
+                                elif typ == "cccd":
+                                    cat = "CCCD"
+                                elif typ == "bank":
+                                    cat = "Tài khoản ngân hàng"
+                                elif typ == "student":
+                                    cat = "Mã sinh viên"
+                                elif typ == "private_key":
+                                    cat = "Private Key"
+                                elif typ == "internal_ip":
+                                    cat = "IP nội bộ"
+                                else:
+                                    cat = lbl or "Dữ liệu nhạy cảm"
+                                if cat not in categories:
+                                    categories.append(cat)
+                            has_critical = any(getattr(f, "risk", "") == "critical" for f in findings.findings)
+                            max_risk = "critical" if has_critical else "high"
+                            try:
+                                self.notifications.notify(len(findings.findings), key, categories=categories, max_risk=max_risk)
+                            except TypeError:
+                                self.notifications.notify(len(findings.findings), key)
 
                 def error(code):
                     with self._lock:
