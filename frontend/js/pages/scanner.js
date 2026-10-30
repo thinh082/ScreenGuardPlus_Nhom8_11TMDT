@@ -723,8 +723,10 @@ export function scannerPage(main) {
         const link = document.createElement("a");
         link.href = url;
         link.download = "screenguard-protected.png";
+        document.body.appendChild(link);
         link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         toast("Đã tải ảnh đã che.");
         const hashEl = $("#export-hash-pill");
         if (hashEl) {
@@ -763,8 +765,10 @@ export function scannerPage(main) {
       const link = document.createElement("a");
       link.href = url;
       link.download = "screenguard-protected.png";
+      document.body.appendChild(link);
       link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     }, "image/png");
   };
   const preventDrop = (event) => event.preventDefault();

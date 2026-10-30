@@ -190,7 +190,9 @@ dữ liệu ở cả hai profile, giữ nguyên PII. Chỉ thông tin mạng n�
 - Playwright kiểm tra ảnh password ở profile mặc định và luồng agent khi PWA đóng:
   nhận cảnh báo → đúng ảnh/bounding boxes → không gọi OCR lại → che → API xuất PNG.
   Có kiểm tra 403 khi thiếu vùng bắt buộc, không tải file khi bị chặn; PII cá nhân
-  chưa che chỉ xuất sau xác nhận thật. Kết quả lượt toàn bộ được ghi sau khi chạy.
+  chưa che chỉ xuất sau xác nhận thật. Đã ổn định luồng tải ảnh trên trình duyệt bằng
+  cách gắn thẻ anchor vào DOM và kéo dài thời gian giải phóng blob URL (10s), đạt 34/34
+  kiểm thử E2E (`npm run test:e2e`).
 - Native smoke trên Windows dùng thư mục thử riêng được cấp quyền, không cần PWA:
   `running=true`, `scanned=1`, `findings=1`, `DB_CREDENTIAL`, toast `submitted`,
   Windows toast history có 1 mục; popup IPC `available=true`, `visible=true`,
