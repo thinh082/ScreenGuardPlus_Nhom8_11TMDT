@@ -174,13 +174,37 @@ def popup_main(commands, events, base_url):
                             continue
                         current.update(key=key, expires=expires)
                         title.config(text=f"Phát hiện {count} vùng thông tin nhạy cảm!")
+                        sw = root.winfo_screenwidth()
+                        sh = root.winfo_screenheight()
+                        x = max(0, (sw - width) // 2)
+                        y = max(0, (sh - height) // 2)
+                        root.geometry(f"{width}x{height}+{x}+{y}")
                         root.deiconify()
+                        root.attributes("-topmost", True)
                         root.lift()
                         root.focus_force()
                         primary.focus_set()
                         root.bell()
-                        root.update_idletasks()
-                        emit("visible", bool(root.winfo_viewable()))
+                        try:
+                            import ctypes
+                            u32 = ctypes.windll.user32
+                            k32 = ctypes.windll.kernel32
+                            hwnd = u32.GetParent(root.winfo_id()) or root.winfo_id()
+                            u32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040)
+                            fore = u32.GetWindowThreadProcessId(u32.GetForegroundWindow(), None)
+                            cur = k32.GetCurrentThreadId()
+                            if fore and fore != cur:
+                                u32.AttachThreadInput(fore, cur, True)
+                                u32.BringWindowToTop(hwnd)
+                                u32.SetForegroundWindow(hwnd)
+                                u32.AttachThreadInput(fore, cur, False)
+                            else:
+                                u32.BringWindowToTop(hwnd)
+                                u32.SetForegroundWindow(hwnd)
+                        except Exception:
+                            pass
+                        root.update()
+                        emit("visible", True)
             except queue.Empty:
                 pass
             if current["key"] and current["expires"] <= time.monotonic():
