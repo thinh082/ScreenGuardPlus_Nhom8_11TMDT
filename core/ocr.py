@@ -21,6 +21,15 @@ def tessdata_directory() -> str | None:
     configured = os.environ.get("TESSDATA_PREFIX")
     if configured:
         return configured
+    try:
+        from core.resources import get_bundled_tesseract_dir
+        bundled = get_bundled_tesseract_dir()
+        if bundled:
+            tessdata = bundled / "tessdata"
+            if (tessdata / "eng.traineddata").is_file():
+                return str(tessdata)
+    except Exception:
+        pass
     base = Path(os.environ.get("LOCALAPPDATA", Path.home() / ".local/share"))
     local = base / "ScreenGuardPlus" / "tessdata"
     return str(local) if (local / "eng.traineddata").is_file() else None
@@ -38,10 +47,19 @@ def find_tesseract() -> str | None:
     configured = os.environ.get("TESSERACT_CMD")
     if configured:
         return configured if Path(configured).is_file() else shutil.which(configured)
+    try:
+        from core.resources import get_bundled_tesseract_dir
+        bundled = get_bundled_tesseract_dir()
+        if bundled and (bundled / "tesseract.exe").is_file():
+            return str(bundled / "tesseract.exe")
+    except Exception:
+        pass
     binary = shutil.which("tesseract")
     if binary:
         return binary
-    for base in (os.environ.get("LOCALAPPDATA", ""), os.environ.get("ProgramFiles", "")):
+    for base in (os.environ.get("LOCALAPPDATA", ""), os.environ.get("ProgramFiles", ""), os.environ.get("ProgramFiles(x86)", "")):
+        if not base:
+            continue
         for suffix in ("Programs/Tesseract-OCR/tesseract.exe", "Tesseract-OCR/tesseract.exe"):
             candidate = Path(base) / suffix
             if candidate.is_file():
@@ -115,13 +133,22 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
             rgb = Image.new("RGB", rgba.size, "white")
             rgb.paste(rgba, mask=rgba.getchannel("A"))
             width, height = rgb.size
+            
+            # Adaptive upscaling for screen captures with small font/resolution
+            scale = 1.0
+            if width < 1600 or height < 1200:
+                scale = 2.0
+                ocr_img = rgb.resize((int(width * scale), int(height * scale)), Image.Resampling.LANCZOS)
+            else:
+                ocr_img = rgb
+
             pytesseract.pytesseract.tesseract_cmd = find_tesseract()
             directory = tessdata_directory()
             # pytesseract's Windows shlex preserves quotes in config paths. The engine
             # environment supports spaced paths reliably and is constant for this server.
             if directory:
                 os.environ.setdefault("TESSDATA_PREFIX", directory)
-            data = pytesseract.image_to_data(rgb, lang=selected_language, config="--oem 3 --psm 6",
+            data = pytesseract.image_to_data(ocr_img, lang=selected_language, config="--oem 3 --psm 6",
                                              output_type=pytesseract.Output.DICT, timeout=OCR_TIMEOUT)
         blocks, chars = [], 0
         for index, raw in enumerate(data["text"]):
@@ -129,9 +156,17 @@ def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
             confidence = float(data["conf"][index])
             if not text or confidence < 0:
                 continue
-            x, y = max(0, int(data["left"][index])), max(0, int(data["top"][index]))
-            right = min(width, x + int(data["width"][index]))
-            bottom = min(height, y + int(data["height"][index]))
+            raw_x, raw_y = data["left"][index], data["top"][index]
+            raw_w, raw_h = data["width"][index], data["height"][index]
+            if scale != 1.0:
+                x = max(0, int(round(raw_x / scale)))
+                y = max(0, int(round(raw_y / scale)))
+                right = min(width, int(round((raw_x + raw_w) / scale)))
+                bottom = min(height, int(round((raw_y + raw_h) / scale)))
+            else:
+                x, y = max(0, int(raw_x)), max(0, int(raw_y))
+                right = min(width, x + int(raw_w))
+                bottom = min(height, y + int(raw_h))
             if right <= x or bottom <= y:
                 continue
             chars += len(text)

@@ -48,6 +48,19 @@ GOOGLE_API_KEY_PATTERN = re.compile(
 BEARER_TOKEN_PATTERN = re.compile(
     r"(?i)\bBearer\s+(?P<token>[a-zA-Z0-9_@+/=\-\.]{25,})",
 )
+# 2FA Authenticator Secrets & Masked Secrets
+TWO_FACTOR_SECRET_PATTERN = re.compile(
+    r"""(?i)\b(?P<label>2fa|two[_\s-]*factor|totp|otp[_\s-]*(?:secret|key)?|auth(?:enticator)?[_\s-]*key|ma[_\s-]*2fa|[0-9oq2z]?[fe7p][a4])\b\s*[:=\s-]\s*(?P<secret>[A-Za-z0-9#_]{16,64})\b""",
+)
+
+MASKED_SECRET_PATTERN = re.compile(
+    r"""(?i)\b(?P<label>pass(?:word)?|pwd|mat[_\s-]*khau|2fa|totp|otp|pin|[0-9oq2z]?[fe7p][a4])\b\s*[:=\s-]\s*(?P<secret>[s•\*\.]{4,20})(?=$|\s)""",
+)
+
+UI_PASSWORD_PATTERN = re.compile(
+    r"""(?i)\b(?P<label>pass(?:word)?|pwd|mat[_\s-]*khau)\b\s*[:=\s-]\s*(?P<secret>[^\s]{6,64})\b""",
+)
+
 GENERIC_API_KEY_PATTERN = re.compile(
     r"""(?i)(?<![\w])['"]?(?:[a-z][a-z0-9]{1,24}[_-]){0,3}(?P<label>api[_\s-]*key|apikey|(?:secret|auth|access|refresh)[_\s-]*token|token|account[_\s-]*key|shared[_\s-]*access[_\s-]*key)['"]?\s*[:=]\s*['"]?(?P<secret>[a-zA-Z0-9_./+\-=]{12,})['"]?""",
 )
@@ -318,6 +331,48 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
                         *match.span("jwt"),
                         "jwt_token",
                         "JSON Web Token (JWT)",
+                        risk="critical",
+                        score=0.92,
+                    )
+
+        # 2FA Authenticator Secret Key / TOTP Key
+        if getattr(config.types, "api_key", True):
+            for match in TWO_FACTOR_SECRET_PATTERN.finditer(text):
+                start, end = match.span("secret")
+                add_finding(
+                    idx,
+                    start,
+                    end,
+                    "api_key",
+                    "Mã khóa 2FA / TOTP Secret",
+                    risk="critical",
+                    score=0.95,
+                )
+            for match in MASKED_SECRET_PATTERN.finditer(text):
+                start, end = match.span("secret")
+                lbl = match.group("label").lower()
+                is_2fa = "2fa" in lbl or "fa" in lbl or "otp" in lbl or "totp" in lbl
+                add_finding(
+                    idx,
+                    start,
+                    end,
+                    "api_key" if is_2fa else "db_credential",
+                    "Mã 2FA (che ký tự)" if is_2fa else "Mật khẩu (che ký tự)",
+                    risk="high",
+                    score=0.90,
+                )
+
+        if getattr(config.types, "db_credential", True):
+            for match in UI_PASSWORD_PATTERN.finditer(text):
+                sec = match.group("secret").strip().strip("\"'").lower()
+                if sec not in {"chưa có", "chua co", "none", "null", "undefined", "empty", "true", "false", "n/a", "khong co", "không có"}:
+                    start, end = match.span("secret")
+                    add_finding(
+                        idx,
+                        start,
+                        end,
+                        "db_credential",
+                        "Mật khẩu tài khoản",
                         risk="critical",
                         score=0.92,
                     )
