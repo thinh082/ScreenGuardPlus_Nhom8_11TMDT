@@ -56,7 +56,7 @@ export function scannerPage(main) {
     ],
     [
       "Đánh giá chính sách",
-      "Chọn ngữ cảnh chia sẻ và xem kế hoạch che.",
+      "Kiểm tra kế hoạch bảo vệ trước khi che ảnh.",
       "Tiếp: Che thông tin",
     ],
     [
@@ -84,11 +84,10 @@ export function scannerPage(main) {
     "beforebegin",
     '<label for="profile-select">Chế độ bảo vệ</label>',
   );
-  $(".workflow-policy").prepend($("#destination-select"));
-  $("#destination-select").insertAdjacentHTML(
-    "beforebegin",
-    '<label for="destination-select">Chia sẻ</label>',
-  );
+  const destSlot = $("#destination-slot");
+  if (destSlot && $("#destination-select")) {
+    destSlot.append($("#destination-select"));
+  }
   const recovery = document.createElement("div");
   recovery.className = "workflow-recovery";
   $(".workflow-footer").before(recovery);
@@ -112,10 +111,12 @@ export function scannerPage(main) {
     if (![3, 5].includes(workflowStep)) return;
     const banner = $("#policy-banner");
     const boxes = workflowStep === 3 || redacted ? selectedBoxes() : [];
+    const destSelect = $("#destination-select");
+    const destVal = destSelect ? destSelect.value : "public";
     const key = JSON.stringify([
       scanTicket,
       workflowStep,
-      $("#destination-select").value,
+      destVal,
       boxes,
     ]);
     if (!force && key === policyKey) return;
@@ -127,15 +128,90 @@ export function scannerPage(main) {
     banner.className = "policy-banner";
     $("#policy-reasons").replaceChildren();
     $("#policy-coverage").textContent = "";
-    if (!scanTicket || !scanComplete || fixtureId || ticketExpired) {
-      banner.textContent = ticketExpired
-        ? "Phiên quét đã hết hạn"
-        : "Chưa có phiên OCR hợp lệ";
-      $("#policy-coverage").textContent =
-        "Quét lại ảnh để backend đánh giá. Không có quyết định giả lập.";
+
+    const elDetected = $("#stat-detected");
+    const elSelected = $("#stat-selected");
+    const elPending = $("#stat-pending");
+    const elPendingSub = $("#stat-pending-sub");
+    const stateExpired = $("#policy-state-expired");
+    const stateEmpty = $("#policy-state-empty");
+    const stateNormal = $("#policy-state-normal");
+    const titleEl = $("#policy-title");
+    const descEl = $("#policy-desc");
+    const iconEl = $("#policy-decision-icon");
+
+    if (elDetected) elDetected.textContent = String(findings.length);
+    if (elSelected) elSelected.textContent = String(selected.size);
+
+    if (ticketExpired) {
+      if (stateExpired) stateExpired.hidden = false;
+      if (stateNormal) stateNormal.hidden = true;
+      if (stateEmpty) stateEmpty.hidden = true;
+      banner.textContent = "Phiên quét đã hết hạn";
+      banner.className = "policy-banner policy-expired";
+      delete banner.dataset.decision;
+      if (titleEl) titleEl.textContent = "Phiên quét đã hết hạn";
+      if (descEl) descEl.textContent = "Kết quả đánh giá trước đó không còn hiệu lực. Hãy quét lại ảnh để tiếp tục.";
+      $("#policy-coverage").textContent = "Kết quả đánh giá trước đó không còn hiệu lực. Hãy quét lại ảnh.";
+      if (elPending) elPending.textContent = "—";
+      if (elPendingSub) {
+        elPendingSub.textContent = "Hết hạn";
+        elPendingSub.className = "summary-sub sub-danger";
+      }
       return;
     }
+
+    if (!scanTicket || !scanComplete || fixtureId) {
+      if (scanComplete && findings.length === 0) {
+        if (stateEmpty) stateEmpty.hidden = false;
+        if (stateNormal) stateNormal.hidden = true;
+        if (stateExpired) stateExpired.hidden = true;
+        banner.textContent = "ALLOW · Không có vùng nhạy cảm phát hiện";
+        banner.className = "policy-banner policy-allowed policy-zero-findings";
+        banner.dataset.decision = "ALLOW";
+        if (titleEl) titleEl.textContent = "Chưa phát hiện dữ liệu nhạy cảm";
+        if (descEl) descEl.textContent = "OCR chưa tìm thấy thông tin phù hợp với các quy tắc hiện tại.";
+        if (iconEl) iconEl.innerHTML = icon("info");
+        if (elPending) elPending.textContent = "0";
+        if (elPendingSub) {
+          elPendingSub.textContent = "Không có rủi ro";
+          elPendingSub.className = "summary-sub sub-success";
+        }
+        return;
+      }
+      if (stateNormal) stateNormal.hidden = false;
+      if (stateExpired) stateExpired.hidden = true;
+      if (stateEmpty) stateEmpty.hidden = true;
+      banner.textContent = "Chưa có phiên OCR hợp lệ";
+      $("#policy-coverage").textContent = "Quét lại ảnh để backend đánh giá. Không có quyết định giả lập.";
+      if (elPending) elPending.textContent = "—";
+      return;
+    }
+
+    if (scanComplete && findings.length === 0) {
+      if (stateEmpty) stateEmpty.hidden = false;
+      if (stateNormal) stateNormal.hidden = true;
+      if (stateExpired) stateExpired.hidden = true;
+      banner.textContent = "ALLOW · Không có vùng nhạy cảm phát hiện";
+      banner.className = "policy-banner policy-allowed policy-zero-findings";
+      banner.dataset.decision = "ALLOW";
+      if (titleEl) titleEl.textContent = "Chưa phát hiện dữ liệu nhạy cảm";
+      if (descEl) descEl.textContent = "OCR chưa tìm thấy thông tin phù hợp với các quy tắc hiện tại. Hãy kiểm tra ảnh trước khi chia sẻ.";
+      if (iconEl) iconEl.innerHTML = icon("info");
+      if (elPending) elPending.textContent = "0";
+      if (elPendingSub) {
+        elPendingSub.textContent = "Không có rủi ro";
+        elPendingSub.className = "summary-sub sub-success";
+      }
+      return;
+    }
+
+    if (stateNormal) stateNormal.hidden = false;
+    if (stateExpired) stateExpired.hidden = true;
+    if (stateEmpty) stateEmpty.hidden = true;
+
     banner.textContent = "Đang đánh giá…";
+    if (descEl) descEl.textContent = "Đang kết nối tới Policy Engine để đánh giá kế hoạch bảo vệ…";
     policyController = new AbortController();
     const pendingController = policyController;
     const timeout = setTimeout(() => pendingController.abort(), 10000);
@@ -147,7 +223,7 @@ export function scannerPage(main) {
         signal: policyController.signal,
         body: JSON.stringify({
           ticket: scanTicket,
-          destination: $("#destination-select").value,
+          destination: destVal,
           redactions: boxes.map((b) => ({
             x: Math.round(b.x),
             y: Math.round(b.y),
@@ -167,11 +243,45 @@ export function scannerPage(main) {
       policy = data;
       banner.dataset.decision = data.decision;
       banner.className = `policy-banner policy-${{ BLOCK: "blocked", WARN: "warning", ALLOW: "allowed" }[data.decision]}`;
-      banner.textContent = `${data.decision} · ${{ BLOCK: "Cần che thêm", WARN: "Cần xác nhận", ALLOW: "Đáp ứng chính sách" }[data.decision]}`;
+
+      if (data.decision === "ALLOW") {
+        banner.textContent = "ALLOW · Kế hoạch che đạt yêu cầu";
+        if (titleEl) titleEl.textContent = "Kế hoạch che đạt yêu cầu";
+        if (descEl) descEl.textContent = "Các vùng dự kiến che đáp ứng chính sách. Ảnh chưa được xử lý.";
+        if (iconEl) iconEl.innerHTML = icon("check");
+      } else if (data.decision === "WARN") {
+        banner.textContent = "WARN · Cần xem lại kế hoạch";
+        if (titleEl) titleEl.textContent = "Cần xem lại kế hoạch";
+        if (descEl) descEl.textContent = "Có cảnh báo cần xác nhận trước khi chia sẻ ảnh.";
+        if (iconEl) iconEl.innerHTML = icon("alert");
+      } else {
+        banner.textContent = "BLOCK · Kế hoạch chưa đáp ứng chính sách";
+        if (titleEl) titleEl.textContent = "Kế hoạch chưa đáp ứng chính sách";
+        if (descEl) descEl.textContent = "Còn vùng thông tin nhạy cảm bắt buộc phải che trước khi xuất.";
+        if (iconEl) iconEl.innerHTML = icon("alert");
+      }
+
+      const mandatory = data.unredacted_mandatory_count || 0;
+      const warning = data.unredacted_warning_count || 0;
+      const totalPending = mandatory + warning;
+      if (elPending) elPending.textContent = String(totalPending);
+      if (elPendingSub) {
+        if (mandatory > 0) {
+          elPendingSub.textContent = `${mandatory} bắt buộc`;
+          elPendingSub.className = "summary-sub sub-danger";
+        } else if (warning > 0) {
+          elPendingSub.textContent = `${warning} cảnh báo`;
+          elPendingSub.className = "summary-sub sub-warning";
+        } else {
+          elPendingSub.textContent = "Đã chọn đủ";
+          elPendingSub.className = "summary-sub sub-success";
+        }
+      }
+
       $("#policy-reasons").innerHTML = data.reasons
         .map(
           (r) =>
-            `<li>${escapeHTML(reasons[r] || "Backend yêu cầu kiểm tra bổ sung.")}</li>`,
+            `<li>${escapeHTML(reasons[r] || "Yêu cầu kiểm tra bổ sung.")}</li>`,
         )
         .join("");
       $("#policy-coverage").textContent =
@@ -179,12 +289,33 @@ export function scannerPage(main) {
     } catch (error) {
       if (!disposed && serial === policySerial) {
         delete banner.dataset.decision;
-        banner.textContent = ticketExpired
-          ? "Phiên quét đã hết hạn. Hãy quét lại ảnh."
-          : "Chưa đánh giá được chính sách";
-        $("#policy-coverage").textContent = ticketExpired
-          ? "Ảnh và vùng chọn vẫn giữ nguyên trong phiên này."
-          : "Kiểm tra backend và chọn Đánh giá lại.";
+        if (ticketExpired) {
+          if (stateExpired) stateExpired.hidden = false;
+          if (stateNormal) stateNormal.hidden = true;
+          if (stateEmpty) stateEmpty.hidden = true;
+          banner.textContent = "Phiên quét đã hết hạn";
+          banner.className = "policy-banner policy-expired";
+          if (titleEl) titleEl.textContent = "Phiên quét đã hết hạn";
+          if (descEl) descEl.textContent = "Kết quả đánh giá trước đó không còn hiệu lực. Hãy quét lại ảnh để tiếp tục.";
+          $("#policy-coverage").textContent = "Ảnh và vùng chọn vẫn giữ nguyên trong phiên này.";
+          if (elPending) elPending.textContent = "—";
+          if (elPendingSub) {
+            elPendingSub.textContent = "Hết hạn";
+            elPendingSub.className = "summary-sub sub-danger";
+          }
+        } else {
+          banner.textContent = "Chưa đánh giá được chính sách";
+          banner.className = "policy-banner policy-error";
+          if (titleEl) titleEl.textContent = "Chưa đánh giá được chính sách";
+          if (descEl) descEl.textContent = "Kiểm tra kết nối backend và bấm Đánh giá lại.";
+          if (iconEl) iconEl.innerHTML = icon("alert");
+          $("#policy-coverage").textContent = "Không áp dụng quyết định cũ khi chưa lấy được kết quả từ backend.";
+          if (elPending) elPending.textContent = "—";
+          if (elPendingSub) {
+            elPendingSub.textContent = "Chưa kết nối";
+            elPendingSub.className = "summary-sub sub-warning";
+          }
+        }
       }
     } finally {
       clearTimeout(timeout);
@@ -202,7 +333,16 @@ export function scannerPage(main) {
     $("#workflow-step-select").value = workflowStep;
     $("#workflow-previous").disabled = workflowStep === 1;
     $("#workflow-next").hidden = workflowStep === 5;
-    $("#workflow-next").textContent = steps[workflowStep - 1][2];
+    $("#workflow-next").textContent =
+      workflowStep === 3
+        ? selected.size > 0
+          ? `Tiếp: Che ${selected.size} vùng`
+          : "Tiếp: Che thông tin"
+        : steps[workflowStep - 1][2];
+    const statDet = $("#stat-detected");
+    if (statDet) statDet.textContent = String(findings.length);
+    const statSel = $("#stat-selected");
+    if (statSel) statSel.textContent = String(selected.size);
     $("#workflow-next").disabled =
       !original ||
       busy ||
@@ -280,6 +420,24 @@ export function scannerPage(main) {
     goStep(2);
     runScan();
   };
+  const rescanTrigger = $("#policy-rescan-btn");
+  if (rescanTrigger) {
+    rescanTrigger.onclick = () => {
+      goStep(2);
+      runScan();
+    };
+  }
+  const emptyRecheck = $("#policy-empty-recheck");
+  if (emptyRecheck) emptyRecheck.onclick = () => goStep(2);
+  const emptyManual = $("#policy-empty-manual");
+  if (emptyManual) {
+    emptyManual.onclick = () => {
+      goStep(4);
+      const drawBtn = $("#toggle-draw");
+      if (drawBtn && drawBtn.getAttribute("aria-pressed") !== "true") drawBtn.click();
+    };
+  }
+
   const refreshVisiblePolicy = () => {
     if (!document.hidden) void updatePolicy(true);
   };
@@ -393,14 +551,54 @@ export function scannerPage(main) {
       : "Vùng cần kiểm tra";
     $("#mobile-finding-count").textContent = findings.length;
     $("#selection-tools").hidden = !findings.length;
-    $("#findings-list").innerHTML = findings.length
-      ? findings
-          .map(
-            (f) =>
-              `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "critical" ? '<i class="risk-dot critical-dot" aria-label="Rủi ro cực cao"></i>' : f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small class="finding-type">${escapeHTML(f.type.toUpperCase())} · ${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "Cần kiểm tra"}</small>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
-          )
-          .join("")
-      : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
+    if (workflowStep === 3) {
+      $("#finding-title").textContent = "Vùng dự kiến bảo vệ";
+      $("#findings-list").innerHTML = findings.length
+        ? `<div class="compact-plan-list">` +
+          findings
+            .map((f) => {
+              const isChecked = selected.has(f.id);
+              const isMandatory = f.risk === "critical";
+              const isHigh = f.risk === "high";
+              const badge = isMandatory
+                ? '<span class="compact-risk-badge critical">Bắt buộc</span>'
+                : isHigh
+                  ? '<span class="compact-risk-badge high">Ưu tiên</span>'
+                  : "";
+              const safeLabel = escapeHTML(f.label || f.type);
+              const previewText = f.preview && !f.preview.includes("***") && f.type === "api_key"
+                ? "Khóa bảo mật"
+                : escapeHTML(f.preview || f.text || f.type.toUpperCase());
+              return `
+                <div class="compact-plan-item ${isChecked ? "is-selected" : ""}" data-row="${escapeHTML(f.id)}">
+                  <label class="compact-plan-label">
+                    <input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${safeLabel}" ${isChecked ? "checked" : ""}>
+                    <span class="compact-plan-check">${icon("check")}</span>
+                    <span class="compact-plan-info">
+                      <strong class="compact-plan-name">${safeLabel}</strong>
+                      <span class="compact-plan-preview">${previewText}</span>
+                    </span>
+                    ${badge}
+                  </label>
+                </div>`;
+            })
+            .join("") +
+          `<div class="compact-plan-footer">
+            <button type="button" class="text-button small-button" id="jump-step2-btn">Xem vị trí trên ảnh (Bước 02)</button>
+          </div></div>`
+        : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
+      const jumpBtn = $("#jump-step2-btn");
+      if (jumpBtn) jumpBtn.onclick = () => goStep(2);
+    } else {
+      $("#findings-list").innerHTML = findings.length
+        ? findings
+            .map(
+              (f) =>
+                `<div class="finding-row ${activeFinding === f.id ? "is-active" : ""} ${f.type === "manual" ? "has-remove" : ""}" data-row="${escapeHTML(f.id)}"><input type="checkbox" data-finding="${escapeHTML(f.id)}" aria-label="Che ${escapeHTML(f.label)} ${escapeHTML(f.text)}" ${selected.has(f.id) ? "checked" : ""}><button class="finding-focus" data-focus="${escapeHTML(f.id)}" aria-label="Xem vùng ${escapeHTML(f.label)}"><span class="finding-info"><strong>${f.risk === "critical" ? '<i class="risk-dot critical-dot" aria-label="Rủi ro cực cao"></i>' : f.risk === "high" ? '<i class="risk-dot" aria-label="Rủi ro cao"></i>' : ""}${escapeHTML(f.label)}</strong><span>${escapeHTML(f.text)}</span><small class="finding-type">${escapeHTML(f.type.toUpperCase())} · ${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "Cần kiểm tra"}</small>${!fixtureId && f.type !== "manual" && f.ocr_confidence < 0.6 ? '<small class="review-flag">Cần kiểm tra</small>' : ""}</span></button>${f.type === "manual" ? `<button class="icon-button remove-finding" data-remove="${escapeHTML(f.id)}" aria-label="Xóa ${escapeHTML(f.label)}">${icon("x")}</button>` : `<details class="finding-details"><summary aria-label="Chi tiết ${escapeHTML(f.label)}">${icon("chevron")}</summary><dl><div><dt>Độ tin cậy OCR</dt><dd>${fixtureId ? "Mô phỏng" : `${Math.round(f.ocr_confidence * 100)}%`}</dd></div><div><dt>Điểm luật</dt><dd>${Number.isFinite(f.score) ? escapeHTML(String(f.score)) : "—"}</dd></div><div><dt>Rủi ro</dt><dd>${{ critical: "Cực cao", high: "Cao", medium: "Vừa", low: "Thấp" }[f.risk] || "—"}</dd></div></dl></details>`}</div>`,
+            )
+            .join("")
+        : `<div class="empty-findings">${icon(original ? "eye" : "scan")}<h3>${original ? "Chưa có vùng đánh dấu" : "Chưa có kết quả"}</h3><p>${original ? "Tự đánh dấu thêm trên ảnh." : "Chọn một ảnh để bắt đầu."}</p></div>`;
+    }
     $("#selection-summary").textContent = original
       ? redacted
         ? `Đã che ${selected.size} vùng. Xem lại trước khi tải.`
@@ -1133,6 +1331,7 @@ export function scannerPage(main) {
       cfg.destination = e.target.value;
       updateDetectionConfig(cfg);
       renderFindings();
+      updatePolicy(true);
     };
   }
   renderFindings();

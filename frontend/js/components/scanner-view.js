@@ -13,7 +13,76 @@ export function scannerView() {
     <div class="mobile-scan-tabs" role="tablist" aria-label="Không gian kiểm tra"><button id="mobile-image-tab" role="tab" aria-selected="true" aria-controls="scan-image-panel" class="active">Hình ảnh</button><button id="mobile-findings-tab" role="tab" aria-selected="false" aria-controls="scan-findings-panel">Vùng cần kiểm tra <span id="mobile-finding-count">0</span></button></div>
     <div class="scanner-layout">
       <section class="scanner-workspace" aria-busy="false">
-        <section class="workflow-policy" aria-labelledby="policy-title"><p class="workflow-eyebrow" id="policy-context">KẾ HOẠCH CHE · CHƯA ÁP DỤNG</p><h2 id="policy-title">Kết quả chính sách</h2><div id="policy-banner" class="policy-banner" role="status">Chưa đánh giá</div><ul id="policy-reasons"></ul><p id="policy-coverage" class="small muted"></p><button class="button secondary" id="policy-rescan" hidden>Quét lại ảnh</button><button class="text-button" id="refresh-policy">Đánh giá lại</button><p id="policy-note" class="small muted">Kết quả chỉ áp dụng cho các vùng đã phát hiện.</p></section>
+                <section class="workflow-policy" aria-labelledby="policy-title">
+          <div class="policy-destination-card">
+            <div class="destination-row">
+              <div class="destination-info">
+                <label for="destination-select" class="destination-title">Ngữ cảnh chia sẻ</label>
+                <span class="destination-subtitle">Ảnh sẽ được chia sẻ ở đâu?</span>
+              </div>
+              <div class="destination-select-wrap" id="destination-slot"></div>
+            </div>
+          </div>
+          <div id="policy-state-expired" class="policy-state-card policy-state-expired" hidden>
+            <div class="policy-state-icon text-warning">${icon("clock")}</div>
+            <div class="policy-state-content">
+              <h3>Phiên quét đã hết hạn</h3>
+              <p>Kết quả đánh giá trước đó không còn hiệu lực. Hãy quét lại ảnh để tiếp tục.</p>
+              <div class="policy-state-actions">
+                <button class="button primary small-button" id="policy-rescan-btn">${icon("scan")} Quét lại ảnh</button>
+              </div>
+            </div>
+          </div>
+          <div id="policy-state-empty" class="policy-state-card policy-state-empty" hidden>
+            <div class="policy-state-icon text-muted">${icon("info")}</div>
+            <div class="policy-state-content">
+              <h3>Chưa phát hiện dữ liệu nhạy cảm</h3>
+              <p>OCR chưa tìm thấy thông tin phù hợp với các quy tắc hiện tại. Hãy kiểm tra ảnh trước khi chia sẻ.</p>
+              <div class="policy-empty-actions">
+                <button class="button secondary small-button" id="policy-empty-recheck">Kiểm tra lại ảnh</button>
+                <button class="button ghost small-button" id="policy-empty-manual">${icon("plus")} Đánh dấu thủ công</button>
+              </div>
+              <p class="small muted policy-empty-footnote">Quyết định dựa trên các vùng được phát hiện trong ảnh. Không bảo đảm tuyệt đối mọi văn bản đều an toàn.</p>
+            </div>
+          </div>
+          <div id="policy-state-normal" class="policy-normal-view">
+            <div class="policy-summary-cards">
+              <div class="summary-card">
+                <div class="summary-value" id="stat-detected">0</div>
+                <div class="summary-label">Đã phát hiện</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-value" id="stat-selected">0</div>
+                <div class="summary-label">Dự kiến che</div>
+              </div>
+              <div class="summary-card summary-card-pending" id="stat-pending-box">
+                <div class="summary-value" id="stat-pending">0</div>
+                <div class="summary-label">Còn cần xử lý</div>
+                <div class="summary-sub" id="stat-pending-sub"></div>
+              </div>
+            </div>
+            <div class="policy-decision-card">
+              <p class="workflow-eyebrow" id="policy-context">KẾ HOẠCH CHE · CHƯA ÁP DỤNG</p>
+              <div class="policy-decision-row">
+                <div class="policy-decision-badge-icon" id="policy-decision-icon">${icon("shield")}</div>
+                <div class="policy-decision-heading">
+                  <h2 id="policy-title" class="policy-title-text">Kế hoạch che đạt yêu cầu</h2>
+                  <div id="policy-banner" class="policy-banner" role="status">Chưa đánh giá</div>
+                  <p id="policy-desc" class="policy-desc-text">Các vùng dự kiến che đáp ứng chính sách. Ảnh chưa được xử lý.</p>
+                </div>
+              </div>
+              <ul id="policy-reasons"></ul>
+              <p id="policy-coverage" class="small muted"></p>
+              <div class="policy-card-bottom">
+                <p id="policy-note" class="small muted">Kết quả chỉ áp dụng cho các vùng đã phát hiện. Việc che pixel thực sự diễn ra ở Bước 04.</p>
+                <div class="policy-footer-actions">
+                  <button class="text-button" id="refresh-policy">Đánh giá lại</button>
+                  <button class="button secondary small-button" id="policy-rescan" hidden>Quét lại ảnh</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <div class="workspace-top-bar">
           <div class="security-controls"><select id="profile-select" class="small-select" aria-label="Chế độ bảo vệ"><option value="personal">Cá nhân + secrets</option><option value="security">IT / DevOps</option></select><select id="destination-select" class="small-select" aria-label="Mục đích chia sẻ"><option value="public">Công khai</option><option value="internal">Nội bộ</option></select></div>
         </div>

@@ -18,5 +18,8 @@ export default defineConfig({
     url: `${baseURL}/api/health`,
     reuseExistingServer: false,
     timeout: 30000,
+    env: {
+      SCREENGUARD_OCR_ENGINE: "tesseract",
+    },
   },
 });

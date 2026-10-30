@@ -692,3 +692,400 @@ body {
     overflow-y: auto;
   }
 }
+
+
+/* --- Step 03: Redesigned Policy Evaluation Styles --- */
+.scanner-page .workflow-policy {
+  display: none;
+  padding: 24px;
+  overflow-y: auto;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+}
+.scanner-page[data-workflow-step="3"] .workflow-policy,
+.scanner-page[data-workflow-step="5"] .workflow-policy {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Destination context card */
+.policy-destination-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.destination-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.destination-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.destination-subtitle {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.destination-select-wrap select {
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* 3 Summary metrics */
+.policy-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.summary-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+.summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.summary-sub {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+.summary-sub.sub-danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.summary-sub.sub-warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+.summary-sub.sub-success {
+  background: #e6f7f4;
+  color: #087e78;
+}
+:root[data-theme="dark"] .summary-sub.sub-danger {
+  background: #3f191b;
+  color: #f87171;
+}
+:root[data-theme="dark"] .summary-sub.sub-warning {
+  background: #3d2d14;
+  color: #fbbf24;
+}
+:root[data-theme="dark"] .summary-sub.sub-success {
+  background: #133834;
+  color: #2dd4bf;
+}
+
+/* Decision card */
+.policy-decision-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.policy-decision-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+.policy-decision-badge-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--accent);
+}
+.policy-decision-heading {
+  flex: 1;
+}
+.policy-title-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.policy-banner {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 5px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}
+.policy-banner.policy-allowed {
+  background: #e6f7f4;
+  color: #087e78;
+  border-color: #a7f3d0;
+}
+.policy-banner.policy-warning {
+  background: #fef3c7;
+  color: #d97706;
+  border-color: #fde68a;
+}
+.policy-banner.policy-blocked {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+.policy-banner.policy-expired {
+  background: var(--surface);
+  color: var(--muted);
+  border-color: var(--line);
+}
+.policy-banner.policy-error {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+:root[data-theme="dark"] .policy-banner.policy-allowed {
+  background: #133834;
+  color: #2dd4bf;
+  border-color: #0d9488;
+}
+:root[data-theme="dark"] .policy-banner.policy-warning {
+  background: #3d2d14;
+  color: #fbbf24;
+  border-color: #b45309;
+}
+:root[data-theme="dark"] .policy-banner.policy-blocked,
+:root[data-theme="dark"] .policy-banner.policy-error {
+  background: #3f191b;
+  color: #f87171;
+  border-color: #991b1b;
+}
+.policy-desc-text {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.policy-reasons-list {
+  margin: 10px 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+.policy-coverage-info {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.policy-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.policy-footer-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Special state cards (Expired & Empty) */
+.policy-state-card {
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.policy-state-card[hidden] {
+  display: none !important;
+}
+.policy-state-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.policy-state-icon.text-warning {
+  color: #d97706;
+}
+:root[data-theme="dark"] .policy-state-icon.text-warning {
+  color: #fbbf24;
+}
+.policy-state-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+.policy-state-card p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0;
+  line-height: 1.5;
+}
+.policy-empty-actions,
+.policy-state-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.policy-empty-footnote {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* Compact Findings List in Step 03 Sidebar */
+.compact-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.compact-plan-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.compact-plan-item:hover {
+  border-color: var(--accent);
+}
+.compact-plan-item.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.compact-plan-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  width: 100%;
+}
+.compact-plan-label input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+.compact-plan-check {
+  display: none;
+}
+.compact-plan-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.compact-plan-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.compact-plan-preview {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-risk-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.compact-risk-badge.critical {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.compact-risk-badge.high {
+  background: #fef3c7;
+  color: #d97706;
+}
+:root[data-theme="dark"] .compact-risk-badge.critical {
+  background: #3f191b;
+  color: #f87171;
+}
+:root[data-theme="dark"] .compact-risk-badge.high {
+  background: #3d2d14;
+  color: #fbbf24;
+}
+.compact-plan-footer {
+  margin-top: 10px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .policy-summary-cards {
+    grid-template-columns: 1fr;
+  }
+  .destination-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .destination-select-wrap select {
+    width: 100%;
+  }
+  .scanner-page .workflow-policy {
+    padding: 16px;
+  }
+}
