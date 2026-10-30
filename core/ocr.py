@@ -222,6 +222,8 @@ def _paddle_result(image: bytes, language: str, pages) -> OCRResult:
 def _extract_paddle(image: bytes, language: str) -> OCRResult:
     validate_image(image)
     try:
+        os.environ.setdefault("FLAGS_use_mkldnn", "0")
+        os.environ.setdefault("PADDLE_ENABLE_ONEDNN", "0")
         import numpy as np
         from paddleocr import PaddleOCR
         with Image.open(BytesIO(image)) as source:
@@ -235,7 +237,8 @@ def _extract_paddle(image: bytes, language: str) -> OCRResult:
             if model_language not in _paddle_models:
                 _paddle_models[model_language] = PaddleOCR(
                     lang=model_language, device="cpu", use_doc_orientation_classify=False,
-                    use_doc_unwarping=False, use_textline_orientation=False)
+                    use_doc_unwarping=False, use_textline_orientation=False,
+                    enable_mkldnn=False)
             pages = _paddle_models[model_language].predict(pixels)
         return _paddle_result(image, language, pages)
     except OCRProcessingError:
