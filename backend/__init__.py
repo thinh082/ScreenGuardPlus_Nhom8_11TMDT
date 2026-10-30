@@ -1,0 +1,1 @@
+"""ScreenGuard+ local API skeleton."""

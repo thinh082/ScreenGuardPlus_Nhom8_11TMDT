@@ -1,0 +1,199 @@
+export const DATA_TYPES = [
+  {
+    id: "email",
+    name: "Địa chỉ email",
+    short: "Email",
+    icon: "mail",
+    example: "ten@vidu.com",
+    risk: "high",
+    description: "Địa chỉ email cá nhân, học tập và công việc.",
+  },
+  {
+    id: "phone",
+    name: "Số điện thoại",
+    short: "Điện thoại",
+    icon: "phone",
+    example: "09xx xxx xxx",
+    risk: "medium",
+    description: "Số di động và số điện thoại liên hệ.",
+  },
+  {
+    id: "cccd",
+    name: "Căn cước công dân",
+    short: "CCCD",
+    icon: "card",
+    example: "012 xxx xxx xxx",
+    risk: "high",
+    description: "Số định danh cá nhân trên giấy tờ tùy thân.",
+  },
+  {
+    id: "student",
+    name: "Mã số sinh viên",
+    short: "MSSV",
+    icon: "book",
+    example: "SV2024xxxx",
+    risk: "medium",
+    description: "Mã định danh sinh viên trong tài liệu học tập.",
+  },
+  {
+    id: "bank",
+    name: "Tài khoản ngân hàng",
+    short: "Ngân hàng",
+    icon: "bank",
+    example: "1903 xxxx xxxx",
+    risk: "high",
+    description: "Thông tin tài khoản trong giao dịch và biên lai.",
+  },
+  {
+    id: "custom",
+    name: "Quy tắc tùy chỉnh",
+    short: "Tùy chỉnh",
+    icon: "code",
+    example: "Keyword / Regex",
+    risk: "custom",
+    description: "Mở rộng phạm vi với từ khóa hoặc biểu thức riêng.",
+  },
+];
+export const SECRET_TYPES = [
+  { id: "db_credential", name: "Mật khẩu / connection string" },
+  { id: "api_key", name: "API key / access token" },
+  { id: "private_key", name: "Private key" },
+  { id: "jwt_token", name: "JWT token" },
+  { id: "internal_ip", name: "Mạng nội bộ (chế độ IT / DevOps)" },
+];
+export const DEFAULT_CONFIG = {
+  types: Object.fromEntries(
+    [...DATA_TYPES, ...SECRET_TYPES].map((t) => [t.id, true]),
+  ),
+  rules: [],
+  mode: "auto",
+  sensitivity: "balanced",
+  language: "vie+eng",
+  profile: "personal",
+  destination: "public",
+};
+const KEY = "screenguard.config.v1";
+let memory = structuredClone(DEFAULT_CONFIG);
+export function validateConfig(config) {
+  if (
+    !config ||
+    !["auto", "manual"].includes(config.mode) ||
+    !["low", "balanced", "high"].includes(config.sensitivity) ||
+    !["vie", "eng", "vie+eng"].includes(config.language)
+  )
+    throw new Error("Cấu hình không hợp lệ.");
+  if (!config.profile || !["personal", "security"].includes(config.profile)) {
+    config.profile = "personal";
+  }
+  if (
+    !config.destination ||
+    !["public", "internal"].includes(config.destination)
+  ) {
+    config.destination = "public";
+  }
+  if (
+    !config.types ||
+    DATA_TYPES.some((t) => typeof config.types[t.id] !== "boolean")
+  )
+    throw new Error("Loại dữ liệu không hợp lệ.");
+  for (const type of SECRET_TYPES) {
+    // Migrate saved Phase 4 configurations without resetting PII preferences.
+    if (config.types[type.id] === undefined) config.types[type.id] = true;
+    if (typeof config.types[type.id] !== "boolean")
+      throw new Error("Loại secrets không hợp lệ.");
+  }
+  if (!Array.isArray(config.rules) || config.rules.length > 30)
+    throw new Error("Tối đa 30 quy tắc tùy chỉnh.");
+  const ids = new Set();
+  for (const rule of config.rules) {
+    if (
+      !rule.id ||
+      ids.has(rule.id) ||
+      typeof rule.enabled !== "boolean" ||
+      !["keyword", "regex"].includes(rule.kind) ||
+      !["low", "medium", "high"].includes(rule.risk) ||
+      typeof rule.name !== "string" ||
+      !rule.name.trim() ||
+      rule.name.length > 60 ||
+      typeof rule.pattern !== "string" ||
+      !rule.pattern.trim() ||
+      rule.pattern.length > 200
+    )
+      throw new Error("Quy tắc không hợp lệ (tên ≤ 60, mẫu ≤ 200 ký tự).");
+    ids.add(rule.id);
+    if (rule.kind === "regex") {
+      if (
+        /\(\?(?!:)|\\(?:[1-9]|g[<{]|k[<{])/.test(rule.pattern) ||
+        (rule.pattern.match(/\(/g) || []).length > 12 ||
+        (rule.pattern.match(/\|/g) || []).length > 12 ||
+        (rule.pattern.match(/(?<!\\)[*+?{]/g) || []).length > 20 ||
+        [...rule.pattern.matchAll(/\{(\d+(?:,\d*)?)\}/g)].some((match) =>
+          match[1].split(",").some((value) => value && Number(value) > 1000),
+        )
+      )
+        throw new Error("Regex quá phức tạp hoặc dùng cú pháp không hỗ trợ.");
+      try {
+        new RegExp(rule.pattern, "iu");
+      } catch {
+        throw new Error("Biểu thức Regex không hợp lệ.");
+      }
+    }
+  }
+  return structuredClone(config);
+}
+export function getDetectionConfig() {
+  try {
+    const raw = globalThis.localStorage?.getItem(KEY);
+    if (raw) memory = validateConfig(JSON.parse(raw));
+  } catch {
+    /* Storage blocked or corrupted: keep valid in-memory defaults. */
+  }
+  if (memory.mode !== "auto") {
+    memory.mode = "auto";
+    try {
+      globalThis.localStorage?.setItem(KEY, JSON.stringify(memory));
+    } catch {}
+  }
+  return structuredClone(memory);
+}
+export function updateDetectionConfig(config) {
+  memory = validateConfig(config);
+  memory.mode = "auto";
+  let persisted = false;
+  try {
+    globalThis.localStorage?.setItem(KEY, JSON.stringify(memory));
+    persisted = !!globalThis.localStorage;
+  } catch {
+    /* Session-only fallback. */
+  }
+  globalThis.dispatchEvent?.(new Event("configchange"));
+  return { config: structuredClone(memory), persisted };
+}
+export function resetDetectionConfig() {
+  return updateDetectionConfig(structuredClone(DEFAULT_CONFIG));
+}
+export async function validateConfigWithBackend(config) {
+  validateConfig(config);
+  let response;
+  try {
+    response = await fetch("./api/config/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    return false;
+  }
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    if (response.status === 404 || response.status >= 500) return false;
+    throw new Error(
+      typeof result?.detail === "string"
+        ? result.detail
+        : "Cấu hình không hợp lệ.",
+    );
+  }
+  return true;
+}

@@ -1,0 +1,3 @@
+# Local CPU OCR engine, installed separately from the base dependencies.
+paddlepaddle==3.2.0
+paddleocr>=3.3,<4

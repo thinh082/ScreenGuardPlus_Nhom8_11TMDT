@@ -1,0 +1,14 @@
+{
+  "name": "screenguard-plus",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000",
+    "test": "node --test tests/frontend.test.js",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "prettier": "^3.9.10"
+  }
+}

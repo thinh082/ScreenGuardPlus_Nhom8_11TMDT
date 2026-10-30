@@ -1,0 +1,45 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\mon hoc\\BaoMatMang\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{94CAC7A3-36FF-D703-2680-0AE179A3E3B6}|DuAnMvc\\DuAnMvc.csproj|d:\\mon hoc\\baomatmang\\duanmvc\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{94CAC7A3-36FF-D703-2680-0AE179A3E3B6}|DuAnMvc\\DuAnMvc.csproj|solutionrelative:duanmvc\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:130:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "HomeController.cs",
+              "DocumentMoniker": "D:\\mon hoc\\BaoMatMang\\DuAnMvc\\Controllers\\HomeController.cs",
+              "RelativeDocumentMoniker": "DuAnMvc\\Controllers\\HomeController.cs",
+              "ToolTip": "D:\\mon hoc\\BaoMatMang\\DuAnMvc\\Controllers\\HomeController.cs",
+              "RelativeToolTip": "DuAnMvc\\Controllers\\HomeController.cs",
+              "ViewState": "AgIAACEAAAAAAAAAAAAYwDAAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-29T16:37:57.737Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

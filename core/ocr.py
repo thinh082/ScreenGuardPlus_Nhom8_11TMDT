@@ -1,0 +1,280 @@
+"""Local Tesseract OCR. No image/text logging and no network calls."""
+from collections import OrderedDict
+from io import BytesIO
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import threading
+import math
+
+from PIL import Image, ImageOps
+import pytesseract
+
+from core.models import BoundingBox, OCRBlock, OCRLine, OCRResult, TokenSpan
+from core.validator import MAX_PIXELS, ImageValidationError, validate_image
+
+OCR_TIMEOUT = 25
+MAX_TOKENS = 20_000
+MAX_TEXT = 100_000
+
+
+def tessdata_directory() -> str | None:
+    configured = os.environ.get("TESSDATA_PREFIX")
+    if configured:
+        return configured
+    base = Path(os.environ.get("LOCALAPPDATA", Path.home() / ".local/share"))
+    local = base / "ScreenGuardPlus" / "tessdata"
+    return str(local) if (local / "eng.traineddata").is_file() else None
+
+
+class OCRUnavailableError(RuntimeError):
+    pass
+
+
+class OCRProcessingError(RuntimeError):
+    pass
+
+
+def find_tesseract() -> str | None:
+    configured = os.environ.get("TESSERACT_CMD")
+    if configured:
+        return configured if Path(configured).is_file() else shutil.which(configured)
+    binary = shutil.which("tesseract")
+    if binary:
+        return binary
+    for base in (os.environ.get("LOCALAPPDATA", ""), os.environ.get("ProgramFiles", "")):
+        for suffix in ("Programs/Tesseract-OCR/tesseract.exe", "Tesseract-OCR/tesseract.exe"):
+            candidate = Path(base) / suffix
+            if candidate.is_file():
+                return str(candidate)
+    return None
+
+
+def get_ocr_status() -> dict:
+    binary = find_tesseract()
+    status = {"tesseract_installed": False, "languages": [], "ocr_available": False}
+    if not binary:
+        return status
+    try:
+        directory = tessdata_directory()
+        command = [binary, "--list-langs"] + (["--tessdata-dir", directory] if directory else [])
+        result = subprocess.run(command, capture_output=True, timeout=5,
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        if result.returncode != 0:
+            return status
+        output = result.stdout.decode("utf-8", errors="replace").splitlines()
+        languages = sorted(line.strip() for line in output if line.strip().isascii()
+                           and line.strip().isalpha() and len(line.strip()) == 3)
+        return {"tesseract_installed": True, "languages": languages,
+                "ocr_available": bool({"eng", "vie"}.intersection(languages))}
+    except (OSError, subprocess.SubprocessError):
+        return status
+
+
+def choose_language(requested: str, available: list[str]) -> tuple[str, list[str]]:
+    desired = requested.split("+")
+    chosen = [lang for lang in desired if lang in available]
+    warnings = []
+    missing = [lang for lang in desired if lang not in available]
+    if missing:
+        if "eng" in available and "eng" not in chosen:
+            chosen.append("eng")
+        warnings.append("Thiếu gói ngôn ngữ " + ", ".join(missing) + "; đang dùng " + "+".join(chosen or ["không có"]) + ".")
+    if not chosen:
+        raise OCRUnavailableError("Tesseract chưa có gói ngôn ngữ yêu cầu hoặc eng để dự phòng. Hãy cài eng/vie.")
+    return "+".join(chosen), warnings
+
+
+def build_lines(blocks: list[OCRBlock]) -> list[OCRLine]:
+    grouped = OrderedDict()
+    for index, block in enumerate(blocks):
+        grouped.setdefault(block.line_id, []).append((index, block))
+    lines = []
+    for entries in grouped.values():
+        entries.sort(key=lambda item: item[1].box.x)
+        text, spans = "", []
+        for index, block in entries:
+            if text:
+                text += " "
+            start = len(text)
+            text += block.text
+            spans.append(TokenSpan(start=start, end=len(text), token_index=index))
+        lines.append(OCRLine(text=text, spans=spans))
+    return lines
+
+
+def _extract_tesseract(image: bytes, language: str = "vie+eng") -> OCRResult:
+    validate_image(image)
+    status = get_ocr_status()
+    if not status["ocr_available"]:
+        raise OCRUnavailableError("Tesseract chưa sẵn sàng. Hãy cài Tesseract và gói eng/vie; bạn vẫn có thể đánh dấu thủ công.")
+    selected_language, warnings = choose_language(language, status["languages"])
+    try:
+        with Image.open(BytesIO(image)) as source:
+            oriented = ImageOps.exif_transpose(source)
+            rgba = oriented.convert("RGBA")
+            rgb = Image.new("RGB", rgba.size, "white")
+            rgb.paste(rgba, mask=rgba.getchannel("A"))
+            width, height = rgb.size
+
+            # Adaptive upscaling for screen captures with small font/resolution
+            scale = 1.0
+            if (width < 1600 or height < 1200) and max(width, height) * 2 <= 4096 and width * height * 4 <= MAX_PIXELS:
+                scale = 2.0
+                ocr_img = rgb.resize((int(width * scale), int(height * scale)), Image.Resampling.LANCZOS)
+            else:
+                ocr_img = rgb
+
+            pytesseract.pytesseract.tesseract_cmd = find_tesseract()
+            directory = tessdata_directory()
+            # pytesseract's Windows shlex preserves quotes in config paths. The engine
+            # environment supports spaced paths reliably and is constant for this server.
+            if directory:
+                os.environ.setdefault("TESSDATA_PREFIX", directory)
+            data = pytesseract.image_to_data(ocr_img, lang=selected_language, config="--oem 3 --psm 6",
+                                             output_type=pytesseract.Output.DICT, timeout=OCR_TIMEOUT)
+        blocks, chars = [], 0
+        for index, raw in enumerate(data["text"]):
+            text = raw.strip()
+            confidence = float(data["conf"][index])
+            if not text or confidence < 0:
+                continue
+            raw_x, raw_y = data["left"][index], data["top"][index]
+            raw_w, raw_h = data["width"][index], data["height"][index]
+            if scale != 1.0:
+                x = max(0, int(round(raw_x / scale)))
+                y = max(0, int(round(raw_y / scale)))
+                right = min(width, int(round((raw_x + raw_w) / scale)))
+                bottom = min(height, int(round((raw_y + raw_h) / scale)))
+            else:
+                x, y = max(0, int(raw_x)), max(0, int(raw_y))
+                right = min(width, x + int(raw_w))
+                bottom = min(height, y + int(raw_h))
+            if right <= x or bottom <= y:
+                continue
+            chars += len(text)
+            if len(blocks) >= MAX_TOKENS or chars > MAX_TEXT:
+                raise OCRProcessingError("Ảnh có quá nhiều văn bản. Hãy cắt thành vùng nhỏ hơn rồi kiểm tra lại.")
+            blocks.append(OCRBlock(text=text, confidence=max(0, min(1, confidence / 100)),
+                                   box=BoundingBox(x=x, y=y, width=right-x, height=bottom-y),
+                                   line_id=tuple(int(data[key][index]) for key in ("page_num", "block_num", "par_num", "line_num"))))
+        lines = build_lines(blocks)
+        if not blocks or sum(b.confidence * len(b.text) for b in blocks) / max(1, sum(len(b.text) for b in blocks)) < .35:
+            warnings.append("OCR đọc chưa rõ; ảnh chữ viết tay hoặc mờ có thể bị bỏ sót. Hãy kiểm tra và đánh dấu thủ công.")
+        return OCRResult(width=width, height=height, blocks=blocks, lines=lines,
+                         text="\n".join(line.text for line in lines), language=selected_language, warnings=warnings)
+    except pytesseract.TesseractNotFoundError as exc:
+        raise OCRUnavailableError("Không tìm thấy Tesseract. Kiểm tra TESSERACT_CMD.") from exc
+    except (pytesseract.TesseractError, RuntimeError) as exc:
+        if isinstance(exc, OCRProcessingError):
+            raise
+        raise OCRProcessingError("OCR thất bại hoặc quá thời gian 25 giây. Hãy thử ảnh rõ hơn hoặc đánh dấu thủ công.") from exc
+    except (OSError, ValueError) as exc:
+        raise ImageValidationError("Không đọc được đầy đủ dữ liệu ảnh.") from exc
+
+
+_paddle_lock = threading.Lock()
+_paddle_models = {}
+
+
+def _paddle_result(image: bytes, language: str, pages) -> OCRResult:
+    """Convert PaddleOCR line polygons to conservative original-image boxes."""
+    with Image.open(BytesIO(image)) as source:
+        width, height = ImageOps.exif_transpose(source).size
+    blocks = []
+    chars = 0
+    for page in pages:
+        texts, scores, polygons = page["rec_texts"], page["rec_scores"], page["rec_polys"]
+        if not (len(texts) == len(scores) == len(polygons)):
+            raise OCRProcessingError("Kết quả PaddleOCR không hợp lệ.")
+        for text, score, polygon in zip(texts, scores, polygons):
+            text = str(text).strip()
+            if not text:
+                continue
+            points = [(float(point[0]), float(point[1])) for point in polygon]
+            if not points or not all(math.isfinite(v) for point in points for v in point):
+                raise OCRProcessingError("Tọa độ PaddleOCR không hợp lệ.")
+            x = max(0, math.floor(min(p[0] for p in points)))
+            y = max(0, math.floor(min(p[1] for p in points)))
+            right = min(width, math.ceil(max(p[0] for p in points)))
+            bottom = min(height, math.ceil(max(p[1] for p in points)))
+            if right <= x or bottom <= y:
+                continue
+            chars += len(text)
+            if len(blocks) >= MAX_TOKENS or chars > MAX_TEXT:
+                raise OCRProcessingError("Ảnh có quá nhiều văn bản. Hãy cắt thành vùng nhỏ hơn rồi kiểm tra lại.")
+            confidence = float(score)
+            if not math.isfinite(confidence):
+                raise OCRProcessingError("Độ tin cậy PaddleOCR không hợp lệ.")
+            blocks.append(OCRBlock(text=text, confidence=max(0, min(1, confidence)),
+                                   box=BoundingBox(x=x, y=y, width=right-x, height=bottom-y),
+                                   line_id=(1, 1, 1, len(blocks)+1)))
+    blocks.sort(key=lambda block: (block.box.y, block.box.x))
+    lines = build_lines(blocks)
+    warnings = ["Đang dùng PaddleOCR; vùng che có thể bao gồm cả dòng chữ. Hãy kiểm tra ảnh trước khi chia sẻ."]
+    if not blocks or sum(b.confidence * len(b.text) for b in blocks) / max(1, sum(len(b.text) for b in blocks)) < .35:
+        warnings.append("OCR đọc chưa rõ; chữ viết tay hoặc mờ có thể bị bỏ sót. Hãy kiểm tra và đánh dấu thủ công.")
+    return OCRResult(width=width, height=height, blocks=blocks, lines=lines,
+                     text="\n".join(line.text for line in lines), language=language, warnings=warnings)
+
+
+def _extract_paddle(image: bytes, language: str) -> OCRResult:
+    validate_image(image)
+    try:
+        os.environ.setdefault("FLAGS_use_mkldnn", "0")
+        os.environ.setdefault("PADDLE_ENABLE_ONEDNN", "0")
+        import numpy as np
+        from paddleocr import PaddleOCR
+        with Image.open(BytesIO(image)) as source:
+            oriented = ImageOps.exif_transpose(source).convert("RGBA")
+            rgb = Image.new("RGB", oriented.size, "white")
+            rgb.paste(oriented, mask=oriented.getchannel("A"))
+            pixels = np.asarray(rgb)[:, :, ::-1].copy()
+        model_language = "en" if language == "eng" else "vi"
+        # Paddle's predictor and model initialization are not shared concurrently.
+        with _paddle_lock:
+            if model_language not in _paddle_models:
+                _paddle_models[model_language] = PaddleOCR(
+                    lang=model_language, device="cpu", use_doc_orientation_classify=False,
+                    use_doc_unwarping=False, use_textline_orientation=False,
+                    enable_mkldnn=False)
+            pages = _paddle_models[model_language].predict(pixels)
+        return _paddle_result(image, language, pages)
+    except OCRProcessingError:
+        raise
+    except Exception as exc:
+        raise OCRUnavailableError("PaddleOCR chưa sẵn sàng hoặc xử lý thất bại; kiểm tra cài đặt và model.") from exc
+
+
+def extract_text(image: bytes, language: str = "vie+eng") -> OCRResult:
+    engine = os.environ.get("SCREENGUARD_OCR_ENGINE", "auto").lower()
+    if engine == "paddle":
+        try:
+            return _extract_paddle(image, language)
+        except OCRUnavailableError:
+            result = _extract_tesseract(image, language)
+            result.warnings.insert(0, "PaddleOCR không sẵn sàng; đang dùng Tesseract dự phòng.")
+            return result
+    elif engine == "tesseract":
+        return _extract_tesseract(image, language)
+
+    # auto mode: Fast path with Tesseract (<1s) for standard digital text/screenshots
+    try:
+        tess = _extract_tesseract(image, language)
+        avg_conf = (
+            sum(b.confidence * len(b.text) for b in tess.blocks) / max(1, sum(len(b.text) for b in tess.blocks))
+            if tess.blocks else 0.0
+        )
+        if tess.blocks and avg_conf >= 0.40 and not any("chữ viết tay" in w for w in tess.warnings):
+            return tess
+    except Exception:
+        pass
+
+    # Fallback to PaddleOCR for handwritten text or poor OCR clarity
+    try:
+        return _extract_paddle(image, language)
+    except OCRUnavailableError:
+        result = _extract_tesseract(image, language)
+        result.warnings.insert(0, "PaddleOCR không sẵn sàng; đang dùng Tesseract dự phòng.")
+        return result
