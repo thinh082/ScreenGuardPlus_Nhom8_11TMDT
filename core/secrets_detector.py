@@ -57,6 +57,10 @@ GENERIC_API_KEY_PATTERN = re.compile(
     r"""(?i)(?<![\w])['"]?(?:[a-z][a-z0-9]{1,24}[_-]){0,3}(?P<label>api[_\s-]*key|apikey|(?:secret|auth|access|refresh)[_\s-]*token|token|account[_\s-]*key|shared[_\s-]*access[_\s-]*key)['"]?\s*[:=]\s*['"]?(?P<secret>[a-zA-Z0-9_./+\-=]{12,})['"]?""",
 )
 
+# OCR may put a handwritten label and each line of its value in separate boxes.
+API_KEY_LABEL_ONLY = re.compile(r"(?i)^\s*api[\s_-]*key\s*[:=]?\s*$")
+API_KEY_FRAGMENT = re.compile(r"^[A-Za-z0-9_./+\-=\s]{8,}$")
+
 # Private Keys
 PRIVATE_KEY_START_PATTERN = re.compile(
     r"-{2,}\s*BEGIN\s+(?:[A-Z0-9_-]+\s+)?PRIVATE\s+KEY\s*-{2,}",
@@ -413,5 +417,53 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
                     risk="low",
                     score=0.82,
                 )
+
+    # Associate separate OCR boxes only when an explicit label and a nearby,
+    # alphanumeric-looking value are present. Cover both lines if the value wraps.
+    if config.types.api_key:
+        blocks = ocr_result.blocks
+        for label_block in blocks:
+            if not API_KEY_LABEL_ONLY.fullmatch(label_block.text):
+                continue
+            label_box = label_block.box
+            candidates = []
+            for block in blocks:
+                box = block.box
+                compact = re.sub(r"\s+", "", block.text)
+                if (box.x < label_box.x + label_box.width * .7
+                    or box.x - (label_box.x + label_box.width) > label_box.height * 3
+                    or abs((box.y + box.height / 2) - (label_box.y + label_box.height / 2)) > label_box.height
+                    or not API_KEY_FRAGMENT.fullmatch(block.text.strip())
+                    or len(compact) < 8 or not re.search(r"[A-Za-z]", compact)
+                    or not re.search(r"\d", compact)):
+                    continue
+                candidates.append(block)
+            if not candidates:
+                continue
+            first = min(candidates, key=lambda b: (b.box.y, b.box.x))
+            selected = [first]
+            continuations = [b for b in blocks if b is not first
+                and b.box.y > first.box.y + first.box.height * .35
+                and 0 < (b.box.y + b.box.height / 2) - (first.box.y + first.box.height / 2) <= first.box.height * 1.5
+                and abs(b.box.x - first.box.x) <= first.box.height
+                and API_KEY_FRAGMENT.fullmatch(b.text.strip())
+                and len(re.sub(r"\s+", "", b.text)) >= 8
+                and re.search(r"[A-Za-z]", b.text) and re.search(r"\d", b.text)]
+            if continuations:
+                selected.append(min(continuations, key=lambda b: b.box.y))
+            left = max(0, min(b.box.x for b in selected) - 2)
+            top = max(0, min(b.box.y for b in selected) - 2)
+            right = min(ocr_result.width, max(b.box.x + b.box.width for b in selected) + 2)
+            bottom = min(ocr_result.height, max(b.box.y + b.box.height for b in selected) + 2)
+            if any(f.type == "api_key" and f.box.x < right and f.box.x + f.box.width > left
+                   and f.box.y < bottom and f.box.y + f.box.height > top for f in findings):
+                continue
+            confidence = sum(b.confidence * len(b.text) for b in selected) / sum(len(b.text) for b in selected)
+            if confidence < min_confidence and config.sensitivity == "low":
+                continue
+            findings.append(Finding(type="api_key", id=str(uuid4()), label="API Key bí mật (kiểm tra vùng)",
+                text="[REDACTED_SECRET]", risk="critical", score=.7,
+                ocr_confidence=round(confidence, 4), preview="key: [******]", source="ocr_regex",
+                box=BoundingBox(x=left, y=top, width=right-left, height=bottom-top)))
 
     return sorted(findings, key=lambda f: (f.box.y, f.box.x))
