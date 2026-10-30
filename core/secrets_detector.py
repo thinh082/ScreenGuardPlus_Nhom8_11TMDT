@@ -117,6 +117,30 @@ def _is_valid_ipv4_octets(ip_str: str) -> bool:
         return False
 
 
+def _assignment_is_documentation(text: str, match: re.Match) -> bool:
+    """Exclude explicit placeholders and unquoted colon-led prose.
+
+    This only refines generic assignment rules, not provider key formats. An
+    equals assignment or quoted value remains eligible even when letter-only.
+    Pattern detection never establishes whether a credential is active.
+    """
+    value = match.group("secret").strip().strip("\"'")
+    if re.fullmatch(
+        r"(?i)your[_-](?:(?:api|database|db|access|refresh|client|secret)[_-])*"
+        r"(?:password|key|token|secret)[_-]here",
+        value,
+    ):
+        return True
+    prefix = text[match.start() : match.start("secret")].rstrip()
+    # 'API_KEY: authentication identifies the caller' is a definition, while
+    # 'API_KEY=authentication' and 'API_KEY: "authentication"' are values.
+    return (
+        prefix.endswith(":")
+        and value.isalpha()
+        and bool(re.match(r"\s+[A-Za-z]+\s+[A-Za-z]+", text[match.end("secret") :]))
+    )
+
+
 def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Finding]:
     """Scans OCR text for Developer & Infrastructure secrets."""
     lines = ocr_result.lines or build_lines(ocr_result.blocks)
@@ -247,6 +271,8 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
 
         # Config passwords and application/client secrets share assignment syntax.
         for match in CONFIG_PASSWORD_PATTERN.finditer(text):
+            if _assignment_is_documentation(text, match):
+                continue
             kind = (
                 "api_key"
                 if "secret" in match.group("label").lower()
@@ -359,6 +385,8 @@ def detect_secrets(ocr_result: OCRResult, config: DetectionConfig) -> list[Findi
 
             # Generic API Key
             for match in GENERIC_API_KEY_PATTERN.finditer(text):
+                if _assignment_is_documentation(text, match):
+                    continue
                 start, end = match.span("secret")
                 add_finding(
                     idx,

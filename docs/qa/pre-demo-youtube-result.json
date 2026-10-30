@@ -1,0 +1,8 @@
+{
+  "source": "fresh unauthenticated public YouTube homepage, visually reviewed: no PII/secret values",
+  "sha256": "c72f471452ee19076931e1247abfc798c96455677bea43aefbebd345568ed83a",
+  "language": "eng",
+  "findings": [],
+  "latency_ms": 496.92,
+  "expectation": "0 findings for this captured page only"
+}

@@ -1,0 +1,900 @@
+{
+  "created_utc": "2026-10-30T05:29:56.224668+00:00",
+  "git_head": "d1db10204c257b5b65e2744308ad28ac93e5ccf5",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.10",
+  "ocr": {
+    "tesseract_installed": true,
+    "languages": [
+      "eng",
+      "vie"
+    ],
+    "ocr_available": true
+  },
+  "language": "eng",
+  "profile": "personal",
+  "runs_per_image": 1,
+  "latency_includes": "validation + Tesseract + PII/secrets + policy + ticket; diagnostic OCR excluded; sequential; no warmup",
+  "matching": "one-to-one type and intersection with authored line; recall includes OCR failures",
+  "scope": "small authored synthetic corpus; not a representative production accuracy estimate",
+  "metrics": {
+    "all": {
+      "images": 26,
+      "tp": 11,
+      "fp": 5,
+      "fn": 5,
+      "precision": 0.6875,
+      "recall": 0.6875,
+      "f1": 0.6875,
+      "negative_images": 13,
+      "negative_images_alerted": 5,
+      "median_ms": 279.32,
+      "max_ms": 776.81
+    },
+    "clear": {
+      "images": 23,
+      "tp": 11,
+      "fp": 5,
+      "fn": 2,
+      "precision": 0.6875,
+      "recall": 0.8461538461538461,
+      "f1": 0.7586206896551724,
+      "negative_images": 13,
+      "negative_images_alerted": 5,
+      "median_ms": 279.74,
+      "max_ms": 776.81
+    },
+    "stress": {
+      "images": 3,
+      "tp": 0,
+      "fp": 0,
+      "fn": 3,
+      "precision": null,
+      "recall": 0.0,
+      "f1": 0.0,
+      "negative_images": 0,
+      "negative_images_alerted": 0,
+      "median_ms": 253.09,
+      "max_ms": 290.21
+    }
+  },
+  "cases": [
+    {
+      "id": "landscape",
+      "tc": "TC01",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "a43a924439baa87b5ba5867006c517cd56c7bf0115d6a0702eb6cb2537f170c7",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 209.25,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "yy N",
+      "findings": []
+    },
+    {
+      "id": "youtube_clean",
+      "tc": "TC02",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "fe340a367c3c5fb1b6168ed8da9c9289455e6137fcb3a11171ec0d4645a30f9b",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 210.04,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Chrome - synthetic browser screenshot\nYouTube\nSearch\nRelaxing mountain scenery\nNature videos and travel stories\nHome Music Learning",
+      "findings": []
+    },
+    {
+      "id": "study_networks",
+      "tc": "TC03",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "f290b00b520db9aa3273fa93456fa97c8eba82df3b8dbee91e3e656b69bcee17",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 239.98,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Computer networks\nA router forwards packets between networks.\nEncryption protects information in transit.",
+      "findings": []
+    },
+    {
+      "id": "study_database",
+      "tc": "TC03",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "436f4be719591fb438c3dd27a118aa1aaa39d98f84189105472f3aa14ce41bf6",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 278.41,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Database normalization\nTables store records and columns describe attributes.\nA primary key uniquely identifies each row.",
+      "findings": []
+    },
+    {
+      "id": "password_term",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "cc7f5a96231233e3e1d07120923307989c6d7b3c7c9a5ae026b8fe7b2709c095",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 238.75,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD is an environment variable.\nDo not publish credentials in documentation.",
+      "findings": []
+    },
+    {
+      "id": "password_definition",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "26ac16cabe5d38278beafe3b429235eb4543a586e302e23bdc09af6a544258b6",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 776.81,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD: is the password used by an application.\nThis paragraph explains a concept without a value.",
+      "findings": []
+    },
+    {
+      "id": "password_definition_long",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "0390a72b38ea74fc8f8e6d84afbdcb9cd4fc8f0236b724963b974bf0de1373e5",
+      "expected": {},
+      "actual": {
+        "DB_CREDENTIAL": 1
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "latency_ms": 395.04,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD: stores the database password for an application.",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu trong cấu hình",
+          "bbox": [
+            364,
+            36,
+            464,
+            60
+          ],
+          "risk": "CRITICAL",
+          "score": 0.92,
+          "ocr_confidence": 0.96,
+          "preview": "pass: [******]"
+        }
+      ]
+    },
+    {
+      "id": "password_blank",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "1cf3a78d9e3aac0d25f4b73c3227d39185c8d3faf73154554dfce151116c7934",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 238.83,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD=\nConfigure this variable on your own machine.",
+      "findings": []
+    },
+    {
+      "id": "password_placeholder",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "13b0d5c3d428284648ba25db3d3ecc1f491368d5fb4ae4057938fa8a7746aee9",
+      "expected": {},
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 258.93,
+      "oracle_detector_types": {},
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD=<your_password>\nDATABASE_PASSWORD=${DB_PASSWORD}",
+      "findings": []
+    },
+    {
+      "id": "password_placeholder_words",
+      "tc": "TC04",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "c50e54cfc08b3fb79790655f4a8df27fbdd70c367979bf51aaa85bd2dcb07cf7",
+      "expected": {},
+      "actual": {
+        "DB_CREDENTIAL": 1
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "latency_ms": 279.74,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "DATABASE_PASSWORD=your_password_here",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu trong cấu hình",
+          "bbox": [
+            40,
+            35,
+            652,
+            66
+          ],
+          "risk": "CRITICAL",
+          "score": 0.92,
+          "ocr_confidence": 0.9,
+          "preview": "pass: [******]"
+        }
+      ]
+    },
+    {
+      "id": "api_definition",
+      "tc": "TC03",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "9d5132c870b49e568813de7f23033be0e089c0d98b52b213d6ef68f6269dcdf3",
+      "expected": {},
+      "actual": {
+        "API_KEY": 1
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "latency_ms": 308.51,
+      "oracle_detector_types": {
+        "API_KEY": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "API_KEY: authentication identifies the calling application.\nTokens should be kept private.",
+      "findings": [
+        {
+          "type": "API_KEY",
+          "label": "API Key bí mật",
+          "bbox": [
+            193,
+            35,
+            430,
+            60
+          ],
+          "risk": "CRITICAL",
+          "score": 0.9,
+          "ocr_confidence": 0.96,
+          "preview": "key: [******]tion"
+        }
+      ]
+    },
+    {
+      "id": "token_definition",
+      "tc": "TC03",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "234a1e8338e5109fc49f058682ace56935ad204783099617e5ee7a20566b279e",
+      "expected": {},
+      "actual": {
+        "API_KEY": 1
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "latency_ms": 390.69,
+      "oracle_detector_types": {
+        "API_KEY": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Token: authentication is the process of checking identity.",
+      "findings": [
+        {
+          "type": "API_KEY",
+          "label": "API Key bí mật",
+          "bbox": [
+            159,
+            35,
+            396,
+            60
+          ],
+          "risk": "CRITICAL",
+          "score": 0.9,
+          "ocr_confidence": 0.96,
+          "preview": "key: [******]tion"
+        }
+      ]
+    },
+    {
+      "id": "api_placeholder",
+      "tc": "TC03",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "f438db6d4d0593a35fd61c5b056ac114b4b943fb1af711d32422f6a589990c77",
+      "expected": {},
+      "actual": {
+        "API_KEY": 1
+      },
+      "counts": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0
+      },
+      "latency_ms": 278.9,
+      "oracle_detector_types": {
+        "API_KEY": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "API_KEY=your_api_key_here",
+      "findings": [
+        {
+          "type": "API_KEY",
+          "label": "API Key bí mật",
+          "bbox": [
+            38,
+            35,
+            465,
+            66
+          ],
+          "risk": "CRITICAL",
+          "score": 0.9,
+          "ocr_confidence": 0.9,
+          "preview": "key: [******]here"
+        }
+      ]
+    },
+    {
+      "id": "terminal_password",
+      "tc": "TC05",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "ba20dd43dd63f7d030d218d4efb2aa40f7f1a25ae940155bea6d85beb1dacc0b",
+      "expected": {
+        "DB_CREDENTIAL": 1
+      },
+      "actual": {
+        "DB_CREDENTIAL": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 381.8,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "PS C:\\Demo>\nDATABASE_PASSWORD=DemoPass123!",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu trong cấu hình",
+          "bbox": [
+            40,
+            89,
+            545,
+            120
+          ],
+          "risk": "CRITICAL",
+          "score": 0.92,
+          "ocr_confidence": 0.87,
+          "preview": "pass: [******]"
+        }
+      ]
+    },
+    {
+      "id": "chat_password",
+      "tc": "TC06",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "0c4ac121c26c5d37c699883185c1b87cc4b0147b4566f248d31c00fc009eb001",
+      "expected": {
+        "DB_CREDENTIAL": 1
+      },
+      "actual": {
+        "DB_CREDENTIAL": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 364.16,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Chrome - synthetic browser screenshot\nChatGPT - fictional training example\nUser: Please show a dummy credential assignment.\nDATABASE_PASSWORD=DemoPass123!\nAssistant: this sample value is not an active password.",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu trong cấu hình",
+          "bbox": [
+            40,
+            198,
+            545,
+            229
+          ],
+          "risk": "CRITICAL",
+          "score": 0.92,
+          "ocr_confidence": 0.71,
+          "preview": "pass: [******]"
+        }
+      ]
+    },
+    {
+      "id": "chat_api",
+      "tc": "TC06",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "d9a28896caa350ab71341d961ddc9df2c1046e31429c3798c1ec837bb57a385b",
+      "expected": {
+        "API_KEY": 1
+      },
+      "actual": {
+        "API_KEY": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 339.02,
+      "oracle_detector_types": {
+        "API_KEY": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Chrome - synthetic browser screenshot\nChatGPT - fictional token example\nAPI_KEY=DemoApikey123456789@ABCDEF\nThis is dummy data for a classroom exercise.",
+      "findings": [
+        {
+          "type": "API_KEY",
+          "label": "API Key bí mật",
+          "bbox": [
+            38,
+            144,
+            617,
+            175
+          ],
+          "risk": "CRITICAL",
+          "score": 0.9,
+          "ocr_confidence": 0.59,
+          "preview": "key: [******]6789"
+        }
+      ]
+    },
+    {
+      "id": "chat_mixed_tabs",
+      "tc": "TC06",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "4be90918f778fa5fb0298ab4ac157fe511576077848d478ec6742af51c7df32c",
+      "expected": {
+        "DB_CREDENTIAL": 1,
+        "API_KEY": 1
+      },
+      "actual": {
+        "DB_CREDENTIAL": 1,
+        "API_KEY": 1
+      },
+      "counts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 295.78,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1,
+        "API_KEY": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Chrome - synthetic browser screenshot\nChrome ChatGPT YouTube\nDATABASE_PASSWORD=DemoPass123!\nAPI_KEY=DemoApikey123456789@ABCDEF\nMusic and study recommendations",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu trong cấu hình",
+          "bbox": [
+            40,
+            144,
+            545,
+            175
+          ],
+          "risk": "CRITICAL",
+          "score": 0.92,
+          "ocr_confidence": 0.71,
+          "preview": "pass: [******]"
+        },
+        {
+          "type": "API_KEY",
+          "label": "API Key bí mật",
+          "bbox": [
+            38,
+            198,
+            617,
+            229
+          ],
+          "risk": "CRITICAL",
+          "score": 0.9,
+          "ocr_confidence": 0.59,
+          "preview": "key: [******]6789"
+        }
+      ]
+    },
+    {
+      "id": "email",
+      "tc": "TC07",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "43d071898d7a9cde12778244f5630711792e8be265b583fd10202a717930061b",
+      "expected": {
+        "EMAIL": 1
+      },
+      "actual": {
+        "EMAIL": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 232.56,
+      "oracle_detector_types": {
+        "EMAIL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Email: privacy.test@example.com",
+      "findings": [
+        {
+          "type": "EMAIL",
+          "label": "Địa chỉ email",
+          "bbox": [
+            159,
+            35,
+            567,
+            66
+          ],
+          "risk": "HIGH",
+          "score": 0.95,
+          "ocr_confidence": 0.92,
+          "preview": "pr***@example.com"
+        }
+      ]
+    },
+    {
+      "id": "citizen",
+      "tc": "TC07",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "e0786422ea0711c6f236b1b7e4e7e17b6eac97185c7fd73e027642868e658381",
+      "expected": {
+        "CITIZEN_ID": 1
+      },
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "latency_ms": 209.59,
+      "oracle_detector_types": {
+        "CITIZEN_ID": 1
+      },
+      "miss_attribution": "ocr_or_geometry",
+      "synthetic_ocr_text": "Citizen ID: eeeeeeeeeeee",
+      "findings": []
+    },
+    {
+      "id": "citizen_sans",
+      "tc": "TC07",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "732f7dfd45b9cf00b15f9eecf919a492b863669dd8e421981c1aceac51add84d",
+      "expected": {
+        "CITIZEN_ID": 1
+      },
+      "actual": {
+        "CITIZEN_ID": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 356.61,
+      "oracle_detector_types": {
+        "CITIZEN_ID": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Citizen ID: 000000000000",
+      "findings": [
+        {
+          "type": "CITIZEN_ID",
+          "label": "Căn cước công dân",
+          "bbox": [
+            186,
+            39,
+            391,
+            65
+          ],
+          "risk": "HIGH",
+          "score": 0.93,
+          "ocr_confidence": 0.89,
+          "preview": "00***00"
+        }
+      ]
+    },
+    {
+      "id": "bank",
+      "tc": "TC07",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "fbff052fb1187110db35f83257d32890e0c82f2be5b50ae09db94b760be0d384",
+      "expected": {
+        "BANK_ACCOUNT": 1
+      },
+      "actual": {
+        "BANK_ACCOUNT": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 295.89,
+      "oracle_detector_types": {
+        "BANK_ACCOUNT": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "Account number: 111111111111",
+      "findings": [
+        {
+          "type": "BANK_ACCOUNT",
+          "label": "Tài khoản ngân hàng",
+          "bbox": [
+            312,
+            37,
+            516,
+            60
+          ],
+          "risk": "HIGH",
+          "score": 0.93,
+          "ocr_confidence": 0.95,
+          "preview": "11***11"
+        }
+      ]
+    },
+    {
+      "id": "pii_mixed",
+      "tc": "TC07",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "edd5212888a30e1fc2db1b20766c775539de05b1de8343f0120d14329a2b45b0",
+      "expected": {
+        "EMAIL": 1,
+        "CITIZEN_ID": 1,
+        "BANK_ACCOUNT": 1
+      },
+      "actual": {
+        "EMAIL": 1,
+        "BANK_ACCOUNT": 1
+      },
+      "counts": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 1
+      },
+      "latency_ms": 292.07,
+      "oracle_detector_types": {
+        "EMAIL": 1,
+        "CITIZEN_ID": 1,
+        "BANK_ACCOUNT": 1
+      },
+      "miss_attribution": "ocr_or_geometry",
+      "synthetic_ocr_text": "Email: privacy.test@example.com\nCitizen ID: 9e@0eeeee000e0\nAccount number: 111111111111",
+      "findings": [
+        {
+          "type": "EMAIL",
+          "label": "Địa chỉ email",
+          "bbox": [
+            159,
+            35,
+            567,
+            66
+          ],
+          "risk": "HIGH",
+          "score": 0.95,
+          "ocr_confidence": 0.92,
+          "preview": "pr***@example.com"
+        },
+        {
+          "type": "BANK_ACCOUNT",
+          "label": "Tài khoản ngân hàng",
+          "bbox": [
+            312,
+            145,
+            516,
+            168
+          ],
+          "risk": "HIGH",
+          "score": 0.93,
+          "ocr_confidence": 0.96,
+          "preview": "11***11"
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "tc": "TC05",
+      "source": "authored_synthetic",
+      "stress": false,
+      "image_sha256": "22125f79432e7127287cf0cab6f4854748fc17f3d21faa2bf69e8fbfdd196e72",
+      "expected": {
+        "DB_CREDENTIAL": 1
+      },
+      "actual": {
+        "DB_CREDENTIAL": 1
+      },
+      "counts": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      "latency_ms": 236.29,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": null,
+      "synthetic_ocr_text": "postgresql: //demo:DemoPass123!@localhost :5432/demo",
+      "findings": [
+        {
+          "type": "DB_CREDENTIAL",
+          "label": "Mật khẩu kết nối Database URI",
+          "bbox": [
+            227,
+            35,
+            890,
+            66
+          ],
+          "risk": "CRITICAL",
+          "score": 0.96,
+          "ocr_confidence": 0.46,
+          "preview": "pass: [******]"
+        }
+      ]
+    },
+    {
+      "id": "small_password",
+      "tc": "TC08",
+      "source": "authored_synthetic",
+      "stress": true,
+      "image_sha256": "1aee7b824fd90bae85a048b1ffab85bfc171e6fdfa438da3306c6d4dd0172071",
+      "expected": {
+        "DB_CREDENTIAL": 1
+      },
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "latency_ms": 290.21,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": "ocr_or_geometry",
+      "synthetic_ocr_text": "",
+      "findings": []
+    },
+    {
+      "id": "blurred_password",
+      "tc": "TC08",
+      "source": "authored_synthetic",
+      "stress": true,
+      "image_sha256": "edfe41dca5163092a7829bb3ffd7e0937f9ee4c4f129e2e991c191944b6336e2",
+      "expected": {
+        "DB_CREDENTIAL": 1
+      },
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "latency_ms": 176.6,
+      "oracle_detector_types": {
+        "DB_CREDENTIAL": 1
+      },
+      "miss_attribution": "ocr_or_geometry",
+      "synthetic_ocr_text": "",
+      "findings": []
+    },
+    {
+      "id": "blurred_email",
+      "tc": "TC08",
+      "source": "authored_synthetic",
+      "stress": true,
+      "image_sha256": "05ca4fd6451576fbf874b187c50cd6c1fc866afecbc3ab92d9b81ff013078ad1",
+      "expected": {
+        "EMAIL": 1
+      },
+      "actual": {},
+      "counts": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      "latency_ms": 253.09,
+      "oracle_detector_types": {
+        "EMAIL": 1
+      },
+      "miss_attribution": "ocr_or_geometry",
+      "synthetic_ocr_text": "home Cee coe",
+      "findings": []
+    }
+  ],
+  "detector_source_sha256_lf": "9476aa917c623d0ec5459a55c622d873144b0c2f309200cbe18908bb1ce7fad6",
+  "source_state": "unmodified d1db102",
+  "tesseract_version": "tesseract v5.4.0.20240606",
+  "traineddata_sha256": {
+    "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "vie": "79df64caf7bcfb2a27df5042ecb6121e196eada34da774956995747636d5bfa1"
+  }
+}

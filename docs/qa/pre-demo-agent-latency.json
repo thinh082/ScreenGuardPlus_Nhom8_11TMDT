@@ -1,0 +1,21 @@
+{
+  "clock": "perf_counter",
+  "language": "eng",
+  "clean_images_scanned": 13,
+  "false_sensitive_alerts": 0,
+  "burst_images_written": 5,
+  "secret_alerts": 5,
+  "latency_ms": [
+    1110.38,
+    1475.63,
+    2142.95,
+    2469.91,
+    2819.08
+  ],
+  "median_ms": 2142.95,
+  "max_ms": 2819.08,
+  "duplicates_suppressed": 1,
+  "dropped": 0,
+  "rejected": 0,
+  "scope": "file write -> debounce -> real serial OCR -> notification callback; not display latency; no Win+PrtScn hardware automation"
+}
